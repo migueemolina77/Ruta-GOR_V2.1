@@ -290,4 +290,4 @@ for p in puntos_validos:
     ).add_to(m)
 
 
-        st_folium(m, width="100%", height=700)
+        
