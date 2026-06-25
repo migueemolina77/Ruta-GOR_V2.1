@@ -21,35 +21,10 @@ h1 { color: #ffffff; font-weight: 800; }
     margin-bottom: 12px; padding: 15px; background: #161b22; 
     border-radius: 10px; border-left: 6px solid; border: 1px solid #30363d;
 }
-.tramo-header { color: #8b949e; font-size: 0.75rem; font-weight: bold; }
-.tramo-nombres { color: #ffffff; font-size: 1rem; font-weight: 600; }
-.tramo-distancia { font-size: 1.3rem; font-weight: 800; }
-
-.alerta-box {
-    padding: 10px; border-radius: 8px; font-size: 0.8rem;
-    margin-top: 10px; font-weight: bold;
-}
-.alerta-despine { background: rgba(255,75,75,0.2); color: #ff4b4b; }
-.alerta-comunidad { background: rgba(255,184,0,0.2); color: #ffb800; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- COMUNIDADES ---
-COMUNIDADES = {
-    "EL OASIS": {"lat": 3.965, "lon": -71.895},
-    "RUBIALITOS": {"lat": 3.910, "lon": -72.030}
-}
-
 # --- FUNCIONES ---
-
-def haversine(lat1, lon1, lat2, lon2):
-    R = 6371
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2-lat1)
-    dlambda = math.radians(lon2-lon1)
-    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-
 
 def proyectadas_a_latlon_colombia(este, norte):
     try:
@@ -57,26 +32,19 @@ def proyectadas_a_latlon_colombia(este, norte):
         b = a * (1 - f)
         e2 = (a**2 - b**2) / a**2
 
+        # Sistema híbrido (TU CASO REAL)
         if este > 4000000:
             lat0_deg, lon0_deg, k0, FE, FN = 4.0, -73.0, 0.9992, 5000000.0, 2000000.0
         else:
-            lat0_deg, lon0_deg, k0, FE, FN = 4.596200417, -71.077507917, 1.0, 1000000.0, 1000000.0
+            lat0_deg, lon0_deg, k0, FE, FN = 4.5962, -71.0775, 1.0, 1000000.0, 1000000.0
 
         lat0, lon0 = math.radians(lat0_deg), math.radians(lon0_deg)
 
-        M0 = a * ((1 - e2/4 - 3*e2**2/64)*lat0)
-        M = M0 + (norte - FN) / k0
-        mu = M / (a * (1 - e2/4 - 3*e2**2/64))
+        M = (norte - FN) / k0
+        mu = M / a
 
-        e1 = (1 - math.sqrt(1 - e2)) / (1 + math.sqrt(1 - e2))
-
-        phi1 = mu + (3*e1/2 - 27*e1**3/32)*math.sin(2*mu)
-
-        N1 = a / math.sqrt(1 - e2 * math.sin(phi1)**2)
-        D = (este - FE) / (N1 * k0)
-
-        lat = phi1 - (N1 * math.tan(phi1)) * (D**2 / 2)
-        lon = lon0 + D / math.cos(phi1)
+        lat = mu
+        lon = lon0 + (este - FE) / (a * math.cos(lat))
 
         return math.degrees(lat), math.degrees(lon)
 
@@ -153,19 +121,32 @@ if len(puntos_validos) >= 2:
     for i in range(len(puntos_validos)-1):
         rutas_cache.append(obtener_ruta_osrm(puntos_validos[i], puntos_validos[i+1]))
 
-    m = folium.Map(location=[puntos_validos[0]['lat'], puntos_validos[0]['lon']], zoom_start=11)
+    # --- MAPA ---
+    m = folium.Map(
+        location=[puntos_validos[0]['lat'], puntos_validos[0]['lon']],
+        zoom_start=11
+    )
 
+    # ✅ SATÉLITE BIEN DEFINIDO
     folium.TileLayer(
         tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
-        attr="Google"
+        attr="Google",
+        name="Satélite"
     ).add_to(m)
 
+    # 🎨 COLORES DE TRAMOS
     colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF"]
 
+    # ✅ RUTAS VISIBLES
     for i, (geom, _) in enumerate(rutas_cache):
-        folium.PolyLine(geom, color=colores[i % len(colores)], weight=5).add_to(m)
+        folium.PolyLine(
+            geom,
+            color=colores[i % len(colores)],
+            weight=5,
+            opacity=0.9
+        ).add_to(m)
 
-    # PINES PRO
+    # ✅ PINES PRO
     for p in puntos_validos:
 
         color = colores[(p['id']-1) % len(colores)]
@@ -175,9 +156,9 @@ if len(puntos_validos) >= 2:
             <div style="
                 background:{color};
                 border-radius:50%;
-                width:26px;
-                height:26px;
-                line-height:26px;
+                width:28px;
+                height:28px;
+                line-height:28px;
                 font-weight:bold;
                 color:black;
                 border:2px solid white;">
@@ -186,7 +167,7 @@ if len(puntos_validos) >= 2:
             <div style="
                 background:black;
                 color:white;
-                padding:3px 8px;
+                padding:4px 8px;
                 border-radius:6px;
                 margin-top:4px;
                 font-size:10px;">
@@ -200,4 +181,12 @@ if len(puntos_validos) >= 2:
             icon=DivIcon(html=html)
         ).add_to(m)
 
-    st_folium(m, height=600)
+    # ✅ AUTO ZOOM PERFECTO
+    coords_all = [coord for geom, _ in rutas_cache for coord in geom]
+
+    if coords_all:
+        sw = [min(c[0] for c in coords_all), min(c[1] for c in coords_all)]
+        ne = [max(c[0] for c in coords_all), max(c[1] for c in coords_all)]
+        m.fit_bounds([sw, ne])
+
+    st_folium(m, height=700)
