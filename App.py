@@ -21,19 +21,38 @@ st.markdown("""
 
 def proyectadas_a_latlon_colombia(este, norte):
     try:
-        a = 6378137.0
+        a, f = 6378137.0, 1 / 298.257222101
+        b = a * (1 - f)
+        e2 = (a**2 - b**2) / a**2
 
+        # ✅ TU LÓGICA ORIGINAL FUNCIONAL
         if este > 4000000:
-            FE, FN = 5000000.0, 2000000.0
-            lon0 = math.radians(-73.0)
+            lat0_deg, lon0_deg, k0, FE, FN = 4.0, -73.0, 0.9992, 5000000.0, 2000000.0
         else:
-            FE, FN = 1000000.0, 1000000.0
-            lon0 = math.radians(-71.0775)
+            lat0_deg, lon0_deg, k0, FE, FN = 4.5962, -71.0775, 1.0, 1000000.0, 1000000.0
 
-        lat = (norte - FN) / a
-        lon = lon0 + (este - FE) / a
+        lat0 = math.radians(lat0_deg)
+        lon0 = math.radians(lon0_deg)
+
+        M = (norte - FN) / k0
+        mu = M / (a * (1 - e2/4 - 3*e2**2/64))
+
+        e1 = (1 - math.sqrt(1 - e2)) / (1 + math.sqrt(1 - e2))
+
+        phi1 = (
+            mu
+            + (3*e1/2 - 27*e1**3/32)*math.sin(2*mu)
+            + (21*e1**2/16)*math.sin(4*mu)
+        )
+
+        N1 = a / math.sqrt(1 - e2 * math.sin(phi1)**2)
+        D = (este - FE) / (N1 * k0)
+
+        lat = phi1 - (N1 * math.tan(phi1)) * (D**2 / 2)
+        lon = lon0 + D / math.cos(phi1)
 
         return math.degrees(lat), math.degrees(lon)
+
     except:
         return None, None
 
@@ -105,22 +124,19 @@ for i, n in enumerate(nombres):
 if len(puntos_validos) >= 2:
 
     rutas_cache = []
-    for i in range(len(puntos_validos) - 1):
+    for i in range(len(puntos_validos)-1):
         rutas_cache.append(obtener_ruta_osrm(puntos_validos[i], puntos_validos[i+1]))
 
-    # ✅ MAPA SIN TILE BASE (evita errores)
     m = folium.Map(
         location=[puntos_validos[0]['lat'], puntos_validos[0]['lon']],
-        zoom_start=11,
+        zoom_start=12,
         tiles=None
     )
 
-    # ✅ TILE SATELITAL ESTABLE (ESRI)
+    # ✅ TILE SATELITAL ESTABLE
     folium.TileLayer(
         tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        attr="Esri Satellite",
-        name="Satellite",
-        control=False
+        attr="Esri Satellite"
     ).add_to(m)
 
     colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF"]
@@ -130,13 +146,13 @@ if len(puntos_validos) >= 2:
         folium.PolyLine(
             geom,
             color=colores[i % len(colores)],
-            weight=5,
-            opacity=0.9
+            weight=5
         ).add_to(m)
 
-    # ✅ PINES VISUALES PRO
+    # ✅ PINES PRO
     for p in puntos_validos:
-        color = colores[(p['id'] - 1) % len(colores)]
+
+        color = colores[(p['id']-1) % len(colores)]
 
         html = f"""
         <div style="text-align:center;">
