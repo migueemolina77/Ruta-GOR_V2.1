@@ -5,17 +5,9 @@ from streamlit_folium import st_folium
 import re
 import requests
 import math
-from folium.features import DivIcon
 
 # --- CONFIG ---
-st.set_page_config(page_title="MAPA GOR", layout="wide", page_icon="🦎")
-
-# --- ESTILO ---
-st.markdown("""
-<style>
-.stApp { background-color: #0e1117; }
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="MAPA GOR", layout="wide")
 
 # --- FUNCIONES ---
 
@@ -25,7 +17,6 @@ def proyectadas_a_latlon_colombia(este, norte):
         b = a * (1 - f)
         e2 = (a**2 - b**2) / a**2
 
-        # ✅ SISTEMA HÍBRIDO (EL QUE SÍ FUNCIONA)
         if este > 4000000:
             lat0_deg, lon0_deg, k0, FE, FN = 4.0, -73.0, 0.9992, 5000000.0, 2000000.0
         else:
@@ -52,9 +43,10 @@ def proyectadas_a_latlon_colombia(este, norte):
         )
 
         N1 = a / math.sqrt(1 - e2 * math.sin(phi1)**2)
+        R1 = a * (1 - e2) / (1 - e2 * math.sin(phi1)**2)**1.5
         D = (este - FE) / (N1 * k0)
 
-        lat = phi1 - (N1 * math.tan(phi1)) * (D**2 / 2)
+        lat = phi1 - (N1 * math.tan(phi1) / R1) * (D**2/2)
         lon = lon0 + D / math.cos(phi1)
 
         return math.degrees(lat), math.degrees(lon)
@@ -67,17 +59,14 @@ def obtener_ruta_osrm(p1, p2):
     url = f"http://router.project-osrm.org/route/v1/driving/{p1['lon']},{p1['lat']};{p2['lon']},{p2['lat']}?overview=full&geometries=geojson"
 
     try:
-        r = requests.get(url, timeout=5)
-        if r.status_code == 200:
-            data = r.json()
+        r = requests.get(url, timeout=5).json()
 
-            if data.get("code") == "Ok":
-                coords = [[lat, lon] for lon, lat in data["routes"][0]["geometry"]["coordinates"]]
-                km = data["routes"][0]["distance"] / 1000
-                return coords, km
-
-    except Exception as e:
-        st.warning(f"Error OSRM: {e}")
+        if r["code"] == "Ok":
+            coords = [[lat, lon] for lon, lat in r["routes"][0]["geometry"]["coordinates"]]
+            km = r["routes"][0]["distance"] / 1000
+            return coords, km
+    except:
+        pass
 
     return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
 
@@ -89,8 +78,8 @@ def cargar_maestro():
     df.columns = [re.sub(r'[^a-zA-Z]', '', str(c)).upper() for c in df.columns]
 
     c_n = next(c for c in df.columns if any(k in c for k in ['POZO', 'NAME', 'CLUSTER']))
-    c_e = next(c for c in df.columns if "ESTE" in c)
-    c_nt = next(c for c in df.columns if "NORTE" in c)
+    c_e = next(c for c in df.columns if 'ESTE' in c)
+    c_nt = next(c for c in df.columns if 'NORTE' in c)
 
     df = df[[c_n, c_e, c_nt]].dropna()
     df.columns = ['NAME', 'E', 'N']
@@ -105,7 +94,7 @@ def cargar_maestro():
 
 
 # --- UI ---
-st.markdown("<h1 style='text-align:center;'>🦎 MAPA GOR</h1>", unsafe_allow_html=True)
+st.title("🦎 MAPA GOR")
 
 db = cargar_maestro()
 
@@ -128,76 +117,31 @@ for i, n in enumerate(nombres):
             'lon': fila['lon']
         })
 
+
 # --- MAPA ---
 if len(puntos_validos) >= 2:
 
-    rutas_cache = []
+    rutas = []
+    total_km = 0
+
     for i in range(len(puntos_validos)-1):
-        rutas_cache.append(obtener_ruta_osrm(puntos_validos[i], puntos_validos[i+1]))
+        geom, km = obtener_ruta_osrm(puntos_validos[i], puntos_validos[i+1])
+        rutas.append((geom, km))
+        total_km += km
+
+    st.metric("Distancia total", f"{total_km:.2f} km")
 
     m = folium.Map(
         location=[puntos_validos[0]['lat'], puntos_validos[0]['lon']],
-        zoom_start=12,
-        tiles=None
+        zoom_start=12
     )
 
-    # ✅ TILE SATELITAL ESTABLE
-    folium.TileLayer(
-        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        attr="Esri Satellite"
-    ).add_to(m)
+    # Rutas
+    for geom, _ in rutas:
+        folium.PolyLine(geom, color="cyan", weight=4).add_to(m)
 
-    colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF"]
-
-    # ✅ RUTAS
-    for i, (geom, _) in enumerate(rutas_cache):
-        folium.PolyLine(
-            geom,
-            color=colores[i % len(colores)],
-            weight=5
-        ).add_to(m)
-
-    # ✅ PINES PRO
+    # Pins básicos (SIN HTML aún)
     for p in puntos_validos:
-
-        color = colores[(p['id']-1) % len(colores)]
-
-        html = f"""
-        <div style="text-align:center;">
-            <div style="
-                background:{color};
-                border-radius:50%;
-                width:28px;
-                height:28px;
-                line-height:28px;
-                font-weight:bold;
-                color:black;
-                border:2px solid white;">
-                {p['id']}
-            </div>
-            <div style="
-                background:black;
-                color:white;
-                padding:4px 8px;
-                border-radius:6px;
-                margin-top:4px;
-                font-size:10px;">
-                ⛽ {p['n']}
-            </div>
-        </div>
-        """
-
-        folium.Marker(
-            [p['lat'], p['lon']],
-            icon=DivIcon(html=html)
-        ).add_to(m)
-
-    # ✅ AUTO ZOOM
-    coords_all = [coord for geom, _ in rutas_cache for coord in geom]
-
-    if coords_all:
-        sw = [min(c[0] for c in coords_all), min(c[1] for c in coords_all)]
-        ne = [max(c[0] for c in coords_all), max(c[1] for c in coords_all)]
-        m.fit_bounds([sw, ne])
+        folium.Marker([p['lat'], p['lon']], tooltip=p['n']).add_to(m)
 
     st_folium(m, height=700)
