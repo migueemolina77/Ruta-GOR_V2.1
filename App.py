@@ -125,21 +125,14 @@ if len(puntos_validos) >= 2:
     )
 
     # ✅ TILE ESTABLE (nunca falla)
-    folium.TileLayer(
-        tiles="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        attr="OpenStreetMap"
-    ).add_to(m)
+   
+folium.TileLayer(
+    tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attr="Esri Satellite",
+    name="Satellite",
+    control=False
+).add_to(m)
 
-    colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF"]
-
-    # ✅ RUTAS
-    for i, (geom, _) in enumerate(rutas_cache):
-        folium.PolyLine(
-            geom,
-            color=colores[i % len(colores)],
-            weight=5,
-            opacity=0.9
-        ).add_to(m)
 
     # ✅ PINES PRO
     for p in puntos_validos:
