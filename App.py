@@ -6,7 +6,6 @@ import re
 import requests
 import math
 import os
-from folium.features import DivIcon
 
 # --- CONFIG ---
 st.set_page_config(page_title="LOGÍSTICA RUBIALES V2.1", layout="wide", page_icon="🦎")
@@ -42,12 +41,11 @@ COMUNIDADES = {
 
 # --- FUNCIONES ---
 
-# --- FUNCIONES ---
-
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi, dlambda = math.radians(lat2-lat1), math.radians(lon2-lon1)
+    dphi = math.radians(lat2-lat1)
+    dlambda = math.radians(lon2-lon1)
     a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
@@ -58,8 +56,11 @@ def proyectadas_a_latlon_colombia(este, norte):
         b = a * (1 - f)
         e2 = (a**2 - b**2) / a**2
 
-        lat0_deg, lon0_deg, k0, FE, FN = 4.0, -73.0, 0.9992, 5000000.0, 2000000.0
-        lat0, lon0 = math.radians(lat0_deg), math.radians(lon0_deg)
+        lat0_deg, lon0_deg, k0 = 4.0, -73.0, 0.9992
+        FE, FN = 5000000.0, 2000000.0
+
+        lat0 = math.radians(lat0_deg)
+        lon0 = math.radians(lon0_deg)
 
         M = (norte - FN) / k0
         mu = M / (a * (1 - e2/4 - 3*e2**2/64))
@@ -86,18 +87,22 @@ def proyectadas_a_latlon_colombia(este, norte):
 
 def obtener_ruta_osrm(p1, p2):
     url = f"http://router.project-osrm.org/route/v1/driving/{p1['lon']},{p1['lat']};{p2['lon']},{p2['lat']}?overview=full&geometries=geojson"
+    
     try:
         r = requests.get(url, timeout=5).json()
+
         if r['code'] == 'Ok':
             coords = [[lat, lon] for lon, lat in r['routes'][0]['geometry']['coordinates']]
             km = r['routes'][0]['distance'] / 1000
             return coords, km
-    except:
-        pass
+
+    except Exception as e:
+        st.warning(f"⚠️ OSRM error: {e}")
 
     return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
 
-# --- CARGA BASE AUTOMÁTICA ---
+
+# --- CARGA BASE ---
 @st.cache_data
 def cargar_maestro():
     try:
@@ -107,116 +112,3 @@ def cargar_maestro():
         df.columns = [re.sub(r'[^a-zA-Z]', '', str(c)).upper() for c in df.columns]
 
         c_n = next(c for c in df.columns if any(k in c for k in ['POZO', 'NAME', 'CLUSTER']))
-        c_e = next(c for c in df.columns if 'ESTE' in c)
-        c_nt = next(c for c in df.columns if 'NORTE' in c)
-
-        df = df[[c_n, c_e, c_nt]].dropna()
-        df.columns = ['NAME', 'E', 'N']
-
-        coords = df.apply(lambda r: proyectadas_a_latlon_colombia(r['E'], r['N']), axis=1)
-        df['lat'] = [c[0] for c in coords]
-        df['lon'] = [c[1] for c in coords]
-
-        df['KEY'] = df['NAME'].str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
-
-        return df.dropna(subset=['lat'])
-
-    except Exception as e:
-        st.error(f"Error cargando base: {e}")
-        return pd.DataFrame()
-
-# --- UI ---
-st.markdown("<h1 style='text-align:center;'>🦎 MAPA GOR V2.1</h1>", unsafe_allow_html=True)
-st.divider()
-
-db = cargar_maestro()
-
-if db.empty:
-    st.stop()
-
-col_ui, col_map = st.columns([1.2, 3])
-
-with col_ui:
-    st.subheader("Plan de Ruta")
-
-    entrada = st.text_area("Pozos:", height=180, placeholder="CLUSTER-34\nCASE0092")
-
-    nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
-
-    puntos_validos = []
-
-    for i, n in enumerate(nombres):
-        key = re.sub(r'[^a-zA-Z0-9]', '', n)
-
-        match = db[db['KEY'] == key]
-
-        if match.empty:
-            match = db[db['KEY'].str.contains(key, case=False, na=False)]
-
-        if not match.empty:
-            fila = match.iloc[0]
-            puntos_validos.append({
-                'id': i+1,
-                'n': fila['NAME'],
-                'lat': fila['lat'],
-                'lon': fila['lon']
-            })
-
-    if len(puntos_validos) >= 2:
-
-        rutas_cache = []
-        km_total = 0
-
-        for i in range(len(puntos_validos)-1):
-            geom, km = obtener_ruta_osrm(puntos_validos[i], puntos_validos[i+1])
-            rutas_cache.append((geom, km))
-            km_total += km
-
-        for i in range(len(puntos_validos)-1):
-
-            p_orig = puntos_validos[i]
-            p_dest = puntos_validos[i+1]
-            geom, km = rutas_cache[i]
-
-            alerta_html = ""
-
-            geom_reducido = geom[::10]
-
-            for com, coord in COMUNIDADES.items():
-                if any(haversine(g[0], g[1], coord['lat'], coord['lon']) < 5 for g in geom_reducido):
-                    alerta_html += f"<div class='alerta-box alerta-comunidad'>⚠️ {com}</div>"
-
-            if km > 30:
-                alerta_html += "<div class='alerta-box alerta-despine'>🚛 Despine requerido</div>"
-
-            st.markdown(f"""
-            <div class="tramo-card">
-                <div class="tramo-header">TRAMO {i+1}</div>
-                <div class="tramo-nombres">{p_orig['n']} ➔ {p_dest['n']}</div>
-                <div class="tramo-distancia">{km:.2f} KM</div>
-                {alerta_html}
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.metric("DISTANCIA TOTAL", f"{km_total:.2f} km")
-
-with col_map:
-
-    if len(puntos_validos) >= 2:
-
-        m = folium.Map(tiles=None)
-
-        folium.TileLayer(
-            tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
-            attr='Google'
-        ).add_to(m)
-
-        for i in range(len(puntos_validos)-1):
-            geom, _ = rutas_cache[i]
-            folium.PolyLine(geom, color="cyan", weight=4).add_to(m)
-
-        for p in puntos_validos:
-            folium.Marker([p['lat'], p['lon']], tooltip=p['n']).add_to(m)
-
-        st_folium(m, width="100%", height=700)
-
