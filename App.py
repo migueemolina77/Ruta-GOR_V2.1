@@ -42,6 +42,16 @@ COMUNIDADES = {
 
 # --- FUNCIONES ---
 
+# --- FUNCIONES ---
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi, dlambda = math.radians(lat2-lat1), math.radians(lon2-lon1)
+    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+
 def proyectadas_a_latlon_colombia(este, norte):
     try:
         a, f = 6378137.0, 1 / 298.257222101
@@ -49,7 +59,6 @@ def proyectadas_a_latlon_colombia(este, norte):
         e2 = (a**2 - b**2) / a**2
 
         lat0_deg, lon0_deg, k0, FE, FN = 4.0, -73.0, 0.9992, 5000000.0, 2000000.0
-
         lat0, lon0 = math.radians(lat0_deg), math.radians(lon0_deg)
 
         M = (norte - FN) / k0
@@ -73,6 +82,20 @@ def proyectadas_a_latlon_colombia(este, norte):
 
     except:
         return None, None
+
+
+def obtener_ruta_osrm(p1, p2):
+    url = f"http://router.project-osrm.org/route/v1/driving/{p1['lon']},{p1['lat']};{p2['lon']},{p2['lat']}?overview=full&geometries=geojson"
+    try:
+        r = requests.get(url, timeout=5).json()
+        if r['code'] == 'Ok':
+            coords = [[lat, lon] for lon, lat in r['routes'][0]['geometry']['coordinates']]
+            km = r['routes'][0]['distance'] / 1000
+            return coords, km
+    except:
+        pass
+
+    return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
 
 # --- CARGA BASE AUTOMÁTICA ---
 @st.cache_data
