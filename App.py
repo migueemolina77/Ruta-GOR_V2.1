@@ -192,7 +192,7 @@ with col_map:
 
     if len(puntos_validos) >= 2:
 
-        m = folium.Map(location=[4.0, -73.0], zoom_start=7)
+        m = folium.Map(location=[puntos_validos[0]['lat'], puntos_validos[0]['lon']], zoom_start=11)
 
         folium.TileLayer(
             tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
