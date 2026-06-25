@@ -135,6 +135,7 @@ if len(puntos_validos) >= 2:
         location=[puntos_validos[0]['lat'], puntos_validos[0]['lon']],
         zoom_start=12
     )
+    st_folium(m, width="100%", height=800)
 
     # Rutas
     
@@ -152,4 +153,4 @@ for i, (geom, _) in enumerate(rutas):
     for p in puntos_validos:
         folium.Marker([p['lat'], p['lon']], tooltip=p['n']).add_to(m)
 
-    st_folium(m, width="100%", height=800)
+    
