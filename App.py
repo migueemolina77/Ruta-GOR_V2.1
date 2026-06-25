@@ -54,10 +54,47 @@ from pyproj import Transformer
 
 transformer = Transformer.from_crs("EPSG:21897", "EPSG:4326", always_xy=True)
 
+
 def proyectadas_a_latlon_colombia(este, norte):
     try:
-        lon, lat = transformer.transform(este, norte)
-        return lat, lon
+        a, f = 6378137.0, 1 / 298.257222101
+        b = a * (1 - f)
+        e2 = (a**2 - b**2) / a**2
+
+        # 🔥 DETECCIÓN INTELIGENTE (la clave de tu éxito)
+        if este > 4000000:
+            lat0_deg, lon0_deg, k0, FE, FN = 4.0, -73.0, 0.9992, 5000000.0, 2000000.0
+        else:
+            lat0_deg, lon0_deg, k0, FE, FN = 4.596200417, -71.077507917, 1.0, 1000000.0, 1000000.0
+
+        lat0, lon0 = math.radians(lat0_deg), math.radians(lon0_deg)
+
+        M0 = a * (
+            (1 - e2/4 - 3*e2**2/64)*lat0 
+            - (3*e2/8 + 3*e2**2/32)*math.sin(2*lat0)
+            + (15*e2**2/256)*math.sin(4*lat0)
+        )
+
+        M = M0 + (norte - FN) / k0
+        mu = M / (a * (1 - e2/4 - 3*e2**2/64))
+
+        e1 = (1 - math.sqrt(1 - e2)) / (1 + math.sqrt(1 - e2))
+
+        phi1 = (
+            mu
+            + (3*e1/2 - 27*e1**3/32)*math.sin(2*mu)
+            + (21*e1**2/16 - 55*e1**4/32)*math.sin(4*mu)
+        )
+
+        N1 = a / math.sqrt(1 - e2 * math.sin(phi1)**2)
+        R1 = a * (1 - e2) / (1 - e2 * math.sin(phi1)**2)**1.5
+        D = (este - FE) / (N1 * k0)
+
+        lat = phi1 - (N1 * math.tan(phi1) / R1) * (D**2/2)
+        lon = lon0 + D / math.cos(phi1)
+
+        return math.degrees(lat), math.degrees(lon)
+
     except:
         return None, None
 
