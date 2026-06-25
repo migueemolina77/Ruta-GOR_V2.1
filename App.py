@@ -137,11 +137,19 @@ if len(puntos_validos) >= 2:
     )
 
     # Rutas
-    for geom, _ in rutas:
-        folium.PolyLine(geom, color="cyan", weight=4).add_to(m)
+    
+colores = ["#00FF88", "#00E5FF", "#FFD700", "#FF4B4B"]
+
+for i, (geom, _) in enumerate(rutas):
+    folium.PolyLine(
+        geom,
+        color=colores[i % len(colores)],
+        weight=6,
+        opacity=0.85
+    ).add_to(m)
 
     # Pins básicos (SIN HTML aún)
     for p in puntos_validos:
         folium.Marker([p['lat'], p['lon']], tooltip=p['n']).add_to(m)
 
-    st_folium(m, height=700)
+    st_folium(m, width="100%", height=800)
