@@ -239,7 +239,55 @@ with col_map:
         for geom, _ in rutas_cache:
             folium.PolyLine(geom, color="cyan", weight=4).add_to(m)
 
-        for p in puntos_validos:
-            folium.Marker([p['lat'], p['lon']], tooltip=p['n']).add_to(m)
+        
+rom folium.features import DivIcon
+
+colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF", "#7CFC00"]
+
+for p in puntos_validos:
+
+    color = colores[(p['id']-1) % len(colores)]
+
+    html = f"""
+    <div style="text-align:center; font-family:Segoe UI;">
+        
+        <!-- CÍRCULO NUMERADO -->
+        <div style="
+            background:{color};
+            color:black;
+            border-radius:50%;
+            width:24px;
+            height:24px;
+            line-height:24px;
+            font-size:10pt;
+            font-weight:bold;
+            border:2px solid white;
+            margin:auto;
+        ">
+            {p['id']}
+        </div>
+
+        <!-- ETIQUETA DEL POZO -->
+        <div style="
+            background:rgba(14,17,23,0.9);
+            color:white;
+            padding:4px 8px;
+            border-radius:6px;
+            font-size:9pt;
+            margin-top:4px;
+            border:1px solid {color};
+            white-space:nowrap;
+        ">
+            ⛽ {p['n']}
+        </div>
+
+    </div>
+    """
+
+    folium.Marker(
+        [p['lat'], p['lon']],
+        icon=DivIcon(html=html)
+    ).add_to(m)
+
 
         st_folium(m, width="100%", height=700)
