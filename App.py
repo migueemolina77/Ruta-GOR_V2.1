@@ -112,3 +112,20 @@ def cargar_maestro():
         df.columns = [re.sub(r'[^a-zA-Z]', '', str(c)).upper() for c in df.columns]
 
         c_n = next(c for c in df.columns if any(k in c for k in ['POZO', 'NAME', 'CLUSTER']))
+        c_e = next(c for c in df.columns if 'ESTE' in c)
+        c_nt = next(c for c in df.columns if 'NORTE' in c)
+
+        df = df[[c_n, c_e, c_nt]].dropna()
+        df.columns = ['NAME', 'E', 'N']
+
+        coords = df.apply(lambda r: proyectadas_a_latlon_colombia(r['E'], r['N']), axis=1)
+        df['lat'] = [c[0] for c in coords]
+        df['lon'] = [c[1] for c in coords]
+
+        df['KEY'] = df['NAME'].str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
+
+        return df.dropna(subset=['lat'])
+
+    except Exception as e:
+        st.error(f"Error cargando base: {e}")
+        return pd.DataFrame()
