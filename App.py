@@ -103,29 +103,42 @@ def obtener_ruta_osrm(p1, p2):
 
 
 # --- CARGA BASE ---
+
 @st.cache_data
 def cargar_maestro():
+
+    ruta = "COORDENADAS_GOR_V2.xlsx"
+
+    if not os.path.exists(ruta):
+        st.error(f"No se encuentra el archivo: {ruta}")
+        return pd.DataFrame()
+
     try:
-        ruta = "COORDENADAS_GOR_V2.xlsx"
         df = pd.read_excel(ruta, engine="openpyxl")
 
+        # Normalizar nombres
         df.columns = [re.sub(r'[^a-zA-Z]', '', str(c)).upper() for c in df.columns]
 
+        # Detectar columnas
         c_n = next(c for c in df.columns if any(k in c for k in ['POZO', 'NAME', 'CLUSTER']))
-        c_e = next(c for c in df.columns if 'ESTE' in c)
-        c_nt = next(c for c in df.columns if 'NORTE' in c)
+        c_e = next(c for c in df.columns if "ESTE" in c)
+        c_nt = next(c for c in df.columns if "NORTE" in c)
 
+        # Filtrar
         df = df[[c_n, c_e, c_nt]].dropna()
         df.columns = ['NAME', 'E', 'N']
 
+        # Convertir coordenadas
         coords = df.apply(lambda r: proyectadas_a_latlon_colombia(r['E'], r['N']), axis=1)
         df['lat'] = [c[0] for c in coords]
         df['lon'] = [c[1] for c in coords]
 
+        # Generar KEY
         df['KEY'] = df['NAME'].str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
 
         return df.dropna(subset=['lat'])
 
     except Exception as e:
-        st.error(f"Error cargando base: {e}")
+        st.error(f"Error procesando archivo: {e}")
         return pd.DataFrame()
+
