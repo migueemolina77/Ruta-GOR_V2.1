@@ -80,7 +80,7 @@ def obtener_ruta_osrm(p1, p2):
 @st.cache_data
 def cargar_maestro():
     try:
-        ruta = os.path.join("data", "COORDENADAS_GOR.xlsx")
+        ruta = os.path.join("data", "COORDENADAS_GOR_2.xlsx")
         df = pd.read_excel(ruta, engine="openpyxl")
 
         df.columns = [re.sub(r'[^a-zA-Z]', '', str(c)).upper() for c in df.columns]
