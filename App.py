@@ -42,7 +42,7 @@ COMUNIDADES = {
 
 # --- FUNCIONES ---
 
-ef proyectadas_a_latlon_colombia(este, norte):
+def proyectadas_a_latlon_colombia(este, norte):
     try:
         a, f = 6378137.0, 1 / 298.257222101
         b = a * (1 - f)
