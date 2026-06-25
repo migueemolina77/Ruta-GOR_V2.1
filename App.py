@@ -52,7 +52,7 @@ def haversine(lat1, lon1, lat2, lon2):
 
 from pyproj import Transformer
 
-transformer = Transformer.from_crs("EPSG:3116", "EPSG:4326", always_xy=True)
+transformer = Transformer.from_crs("EPSG:3115", "EPSG:4326", always_xy=True)
 
 def proyectadas_a_latlon_colombia(este, norte):
     try:
