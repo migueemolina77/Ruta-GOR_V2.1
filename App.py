@@ -5,7 +5,6 @@ from streamlit_folium import st_folium
 import re
 import requests
 import math
-import os
 from folium.features import DivIcon
 
 # --- CONFIG ---
@@ -15,14 +14,6 @@ st.set_page_config(page_title="MAPA GOR", layout="wide", page_icon="🦎")
 st.markdown("""
 <style>
 .stApp { background-color: #0e1117; }
-
-.tramo-card {
-    margin-bottom: 12px;
-    padding: 15px;
-    background: #161b22;
-    border-radius: 10px;
-    border: 1px solid #30363d;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -43,7 +34,6 @@ def proyectadas_a_latlon_colombia(este, norte):
         lon = lon0 + (este - FE) / a
 
         return math.degrees(lat), math.degrees(lon)
-
     except:
         return None, None
 
@@ -118,25 +108,34 @@ if len(puntos_validos) >= 2:
     for i in range(len(puntos_validos) - 1):
         rutas_cache.append(obtener_ruta_osrm(puntos_validos[i], puntos_validos[i+1]))
 
+    # ✅ MAPA SIN TILE BASE (evita errores)
     m = folium.Map(
         location=[puntos_validos[0]['lat'], puntos_validos[0]['lon']],
         zoom_start=11,
-        tiles=None   # 🔥 clave para evitar fondo negro
+        tiles=None
     )
 
-    # ✅ TILE ESTABLE (nunca falla)
-   
-folium.TileLayer(
-    tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attr="Esri Satellite",
-    name="Satellite",
-    control=False
-).add_to(m)
+    # ✅ TILE SATELITAL ESTABLE (ESRI)
+    folium.TileLayer(
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attr="Esri Satellite",
+        name="Satellite",
+        control=False
+    ).add_to(m)
 
+    colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF"]
 
-    # ✅ PINES PRO
+    # ✅ RUTAS
+    for i, (geom, _) in enumerate(rutas_cache):
+        folium.PolyLine(
+            geom,
+            color=colores[i % len(colores)],
+            weight=5,
+            opacity=0.9
+        ).add_to(m)
+
+    # ✅ PINES VISUALES PRO
     for p in puntos_validos:
-
         color = colores[(p['id'] - 1) % len(colores)]
 
         html = f"""
