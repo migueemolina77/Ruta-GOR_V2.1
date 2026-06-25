@@ -25,6 +25,7 @@ def proyectadas_a_latlon_colombia(este, norte):
         b = a * (1 - f)
         e2 = (a**2 - b**2) / a**2
 
+        # ✅ SISTEMA HÍBRIDO (EL QUE SÍ FUNCIONA)
         if este > 4000000:
             lat0_deg, lon0_deg, k0, FE, FN = 4.0, -73.0, 0.9992, 5000000.0, 2000000.0
         else:
@@ -51,16 +52,16 @@ def proyectadas_a_latlon_colombia(este, norte):
         )
 
         N1 = a / math.sqrt(1 - e2 * math.sin(phi1)**2)
-        R1 = a * (1 - e2) / (1 - e2 * math.sin(phi1)**2)**1.5
         D = (este - FE) / (N1 * k0)
 
-        lat = phi1 - (N1 * math.tan(phi1) / R1) * (D**2/2 - (5 + 3*math.tan(phi1)**2)*D**4/24)
-        lon = lon0 + (D - (1 + 2*math.tan(phi1)**2)*D**3/6) / math.cos(phi1)
+        lat = phi1 - (N1 * math.tan(phi1)) * (D**2 / 2)
+        lon = lon0 + D / math.cos(phi1)
 
         return math.degrees(lat), math.degrees(lon)
 
     except:
         return None, None
+
 
 def obtener_ruta_osrm(p1, p2):
     url = f"http://router.project-osrm.org/route/v1/driving/{p1['lon']},{p1['lat']};{p2['lon']},{p2['lat']}?overview=full&geometries=geojson"
@@ -69,12 +70,14 @@ def obtener_ruta_osrm(p1, p2):
         r = requests.get(url, timeout=5)
         if r.status_code == 200:
             data = r.json()
+
             if data.get("code") == "Ok":
                 coords = [[lat, lon] for lon, lat in data["routes"][0]["geometry"]["coordinates"]]
                 km = data["routes"][0]["distance"] / 1000
                 return coords, km
-    except:
-        pass
+
+    except Exception as e:
+        st.warning(f"Error OSRM: {e}")
 
     return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
 
