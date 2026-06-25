@@ -41,40 +41,38 @@ COMUNIDADES = {
 }
 
 # --- FUNCIONES ---
-def haversine(lat1, lon1, lat2, lon2):
-    R = 6371
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi, dlambda = math.radians(lat2-lat1), math.radians(lon2-lon1)
-    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-def proyectadas_a_latlon_colombia(este, norte):
+ef proyectadas_a_latlon_colombia(este, norte):
     try:
         a, f = 6378137.0, 1 / 298.257222101
         b = a * (1 - f)
         e2 = (a**2 - b**2) / a**2
-        lat0, lon0 = math.radians(4.0), math.radians(-73.0)
-        FE, FN = 5000000.0, 2000000.0
 
-        M = (norte - FN)
-        mu = M / a
-        lat = mu
-        lon = lon0 + (este - FE) / (a * math.cos(lat))
+        lat0_deg, lon0_deg, k0, FE, FN = 4.0, -73.0, 0.9992, 5000000.0, 2000000.0
+
+        lat0, lon0 = math.radians(lat0_deg), math.radians(lon0_deg)
+
+        M = (norte - FN) / k0
+        mu = M / (a * (1 - e2/4 - 3*e2**2/64))
+
+        e1 = (1 - math.sqrt(1 - e2)) / (1 + math.sqrt(1 - e2))
+
+        phi1 = (mu
+            + (3*e1/2 - 27*e1**3/32)*math.sin(2*mu)
+            + (21*e1**2/16)*math.sin(4*mu)
+        )
+
+        N1 = a / math.sqrt(1 - e2 * math.sin(phi1)**2)
+        R1 = a * (1 - e2) / (1 - e2 * math.sin(phi1)**2)**1.5
+        D = (este - FE) / (N1 * k0)
+
+        lat = phi1 - (N1 * math.tan(phi1) / R1) * (D**2 / 2)
+        lon = lon0 + D / math.cos(phi1)
+
         return math.degrees(lat), math.degrees(lon)
+
     except:
         return None, None
-
-def obtener_ruta_osrm(p1, p2):
-    url = f"http://router.project-osrm.org/route/v1/driving/{p1['lon']},{p1['lat']};{p2['lon']},{p2['lat']}?overview=full&geometries=geojson"
-    try:
-        r = requests.get(url, timeout=5).json()
-        if r['code'] == 'Ok':
-            coords = [[lat, lon] for lon, lat in r['routes'][0]['geometry']['coordinates']]
-            km = r['routes'][0]['distance'] / 1000
-            return coords, km
-    except:
-        pass
-    return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
 
 # --- CARGA BASE AUTOMÁTICA ---
 @st.cache_data
