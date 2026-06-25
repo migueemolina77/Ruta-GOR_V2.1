@@ -9,17 +9,19 @@ import os
 from folium.features import DivIcon
 
 # --- CONFIG ---
-st.set_page_config(page_title="LOGÍSTICA RUBIALES V2.1", layout="wide", page_icon="🦎")
+st.set_page_config(page_title="MAPA GOR", layout="wide", page_icon="🦎")
 
 # --- ESTILO ---
 st.markdown("""
 <style>
 .stApp { background-color: #0e1117; }
-h1 { color: #ffffff; font-weight: 800; }
 
 .tramo-card {
-    margin-bottom: 12px; padding: 15px; background: #161b22; 
-    border-radius: 10px; border-left: 6px solid; border: 1px solid #30363d;
+    margin-bottom: 12px;
+    padding: 15px;
+    background: #161b22;
+    border-radius: 10px;
+    border: 1px solid #30363d;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -28,23 +30,17 @@ h1 { color: #ffffff; font-weight: 800; }
 
 def proyectadas_a_latlon_colombia(este, norte):
     try:
-        a, f = 6378137.0, 1 / 298.257222101
-        b = a * (1 - f)
-        e2 = (a**2 - b**2) / a**2
+        a = 6378137.0
 
-        # Sistema híbrido (TU CASO REAL)
         if este > 4000000:
-            lat0_deg, lon0_deg, k0, FE, FN = 4.0, -73.0, 0.9992, 5000000.0, 2000000.0
+            FE, FN = 5000000.0, 2000000.0
+            lon0 = math.radians(-73.0)
         else:
-            lat0_deg, lon0_deg, k0, FE, FN = 4.5962, -71.0775, 1.0, 1000000.0, 1000000.0
+            FE, FN = 1000000.0, 1000000.0
+            lon0 = math.radians(-71.0775)
 
-        lat0, lon0 = math.radians(lat0_deg), math.radians(lon0_deg)
-
-        M = (norte - FN) / k0
-        mu = M / a
-
-        lat = mu
-        lon = lon0 + (este - FE) / (a * math.cos(lat))
+        lat = (norte - FN) / a
+        lon = lon0 + (este - FE) / a
 
         return math.degrees(lat), math.degrees(lon)
 
@@ -96,7 +92,7 @@ st.markdown("<h1 style='text-align:center;'>🦎 MAPA GOR</h1>", unsafe_allow_ht
 
 db = cargar_maestro()
 
-entrada = st.text_area("Pozos (uno por línea):")
+entrada = st.text_area("Pozos (uno por línea)")
 
 nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
 
@@ -115,29 +111,28 @@ for i, n in enumerate(nombres):
             'lon': fila['lon']
         })
 
+# --- MAPA ---
 if len(puntos_validos) >= 2:
 
     rutas_cache = []
-    for i in range(len(puntos_validos)-1):
+    for i in range(len(puntos_validos) - 1):
         rutas_cache.append(obtener_ruta_osrm(puntos_validos[i], puntos_validos[i+1]))
 
-    # --- MAPA ---
     m = folium.Map(
         location=[puntos_validos[0]['lat'], puntos_validos[0]['lon']],
-        zoom_start=11
+        zoom_start=11,
+        tiles=None   # 🔥 clave para evitar fondo negro
     )
 
-    # ✅ SATÉLITE BIEN DEFINIDO
+    # ✅ TILE ESTABLE (nunca falla)
     folium.TileLayer(
-        tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
-        attr="Google",
-        name="Satélite"
+        tiles="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        attr="OpenStreetMap"
     ).add_to(m)
 
-    # 🎨 COLORES DE TRAMOS
     colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF"]
 
-    # ✅ RUTAS VISIBLES
+    # ✅ RUTAS
     for i, (geom, _) in enumerate(rutas_cache):
         folium.PolyLine(
             geom,
@@ -149,7 +144,7 @@ if len(puntos_validos) >= 2:
     # ✅ PINES PRO
     for p in puntos_validos:
 
-        color = colores[(p['id']-1) % len(colores)]
+        color = colores[(p['id'] - 1) % len(colores)]
 
         html = f"""
         <div style="text-align:center;">
@@ -181,7 +176,7 @@ if len(puntos_validos) >= 2:
             icon=DivIcon(html=html)
         ).add_to(m)
 
-    # ✅ AUTO ZOOM PERFECTO
+    # ✅ AUTO ZOOM
     coords_all = [coord for geom, _ in rutas_cache for coord in geom]
 
     if coords_all:
