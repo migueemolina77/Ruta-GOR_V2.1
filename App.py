@@ -102,11 +102,11 @@ def cargar_maestro(file):
 st.markdown("<h1 style='text-align: center;'>🦎 MAPA GOR - ECOPETROL</h1>", unsafe_allow_html=True)
 st.divider()
 
-    archivo = open("COORDENADAS_GOR_V2.xlsx", "rb")
-    archivo.name = "COORDENADAS_GOR_V2-xlsx"
+# ✅ CARGAR ARCHIVO LOCAL (SIN UPLOADER)
 
-    db = cargar_maestro(archivo)
-    col_ui, col_map = st.columns([1.1, 3])
+db = cargar_maestro(open("COORDENADAS_GOR_V2.xlsx", "rb"))
+
+col_ui, col_map = st.columns([1.1, 3])
     
     with col_ui:
         st.subheader("Plan de Ruta")
