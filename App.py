@@ -230,7 +230,7 @@ for p in puntos_validos:
     ).add_to(m)
             
             # Caceríos visibles para referencia
-            for com, coord in COMUNIDADES.items():
+for com, coord in COMUNIDADES.items():
                 folium.Marker(
                     [coord['lat'], coord['lon']], 
                     icon=folium.Icon(color='orange', icon='house-user', prefix='fa'),
