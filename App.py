@@ -107,13 +107,10 @@ archivo = st.file_uploader("📂 Por favor, cargue el archivo maestro de coorden
 if not archivo:
     st.info("👋 **Bienvenido.** Por favor, carga el archivo maestro para iniciar la planificación.")
 else:
-    
-    
-archivo = open("COORDENADAS_GOR_V2.xlsx", "rb")
-archivo.name = "COORDENADAS_GOR_V2.xlsx"
+    archivo = open("COORDENADAS_GOR_V2.xlsx", "rb")
+    archivo.name = "COORDENADAS_GOR_V2-xlsx"
 
-db = cargar_maestro(archivo)
-
+    db = cargar_maestro(archivo)
     col_ui, col_map = st.columns([1.1, 3])
     
     with col_ui:
