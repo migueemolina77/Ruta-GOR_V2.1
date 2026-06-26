@@ -102,22 +102,37 @@ def cargar_maestro(file):
 st.markdown("<h1 style='text-align: center;'>🦎 MAPA GOR - ECOPETROL</h1>", unsafe_allow_html=True)
 st.divider()
 
-# ✅ CARGAR ARCHIVO LOCAL (SIN UPLOADER)
 
+# ✅ Cargar archivo local
+try:
     db = cargar_maestro(open("COORDENADAS_GOR_V2.xlsx", "rb"))
-    col_ui, col_map = st.columns([1.1, 3])
-    
-    with col_ui:
-        st.subheader("Plan de Ruta")
-        entrada = st.text_area("Lista de Pozos:", placeholder="Ej: CLUSTER-34\nCASE0092", height=150)
-        nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
-        
-        puntos_validos = []
-        for i, n in enumerate(nombres):
-            key = re.sub(r'[^a-zA-Z0-9]', '', n)
-            match = db[db['KEY'].str.contains(key, case=False, na=False)]
-            if not match.empty:
-                puntos_validos.append({'id': i+1, 'n': match.iloc[0]['NAME'], 'lat': match.iloc[0]['lat'], 'lon': match.iloc[0]['lon']})
+except:
+    st.error("❌ No se encontró el archivo COORDENADAS_GOR_V2.xlsx en el repositorio")
+    st.stop()
+
+# ✅ ESTO VA FUERA DEL TRY
+col_ui, col_map = st.columns([1.1, 3])
+
+with col_ui:
+    st.subheader("Plan de Ruta")
+
+    entrada = st.text_area("Lista de Pozos:", placeholder="Ej: CLUSTER-34\nCASE0092", height=150)
+
+    nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
+
+    puntos_validos = []
+
+    for i, n in enumerate(nombres):
+        key = re.sub(r'[^a-zA-Z0-9]', '', n)
+
+        match = db[db['KEY'].str.contains(key, case=False, na=False)]
+        if not match.empty:
+            puntos_validos.append({
+                'id': i+1,
+                'n': match.iloc[0]['NAME'],
+                'lat': match.iloc[0]['lat'],
+                'lon': match.iloc[0]['lon']
+            })
 
         if len(puntos_validos) >= 2:
             st.divider()
