@@ -83,6 +83,13 @@ def obtener_ruta_osrm(p1, p2):
     except: pass
     return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
 
+import os
+
+@st.cache_data
+def cargar_maestro():
+    try:
+        archivo = next(f for f in os.listdir() if f.lower().endswith(".xlsx"))
+        df = pd.read_excel(archivo)
 
 @st.cache_data
 def cargar_maestro():
