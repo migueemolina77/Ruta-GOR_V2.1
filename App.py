@@ -125,10 +125,14 @@ if "ejecutar" not in st.session_state:
 
 # ✅ BOTÓN
 if st.button("🚀 Calcular Ruta"):
-    st.session_state.ejecutar = False
+    st.session_state.ejecutar = True
 
 # ✅ SOLO CORRE CUANDO HAY CLICK
 if st.session_state.ejecutar and entrada:
+    # ✅ RESETEO TOTAL
+    puntos_validos = []
+    all_coords = []
+    km_totales = 0
 
     nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
 
