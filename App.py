@@ -7,7 +7,7 @@ import requests
 import math
 from folium.features import DivIcon
 
-# --- CONFIGURACIÓN ---
+# --- CONFIG ---
 st.set_page_config(page_title="LOGÍSTICA RUBIALES V7.4", layout="wide", page_icon="🦎")
 
 st.markdown("""
@@ -21,7 +21,7 @@ st.markdown("""
     border-left: 6px solid;
     border: 1px solid #30363d;
 }
-.tramo-header { color: #8b949e; font-size: 0.75rem; font-weight: bold; }
+.tramo-header { color: #8b949e; font-size: 0.75rem; }
 .tramo-nombres { color: white; font-weight: 600; }
 .tramo-distancia { font-size: 1.2rem; font-weight: bold; }
 </style>
@@ -42,7 +42,7 @@ def obtener_ruta_osrm(p1, p2):
     try:
         r = requests.get(url, timeout=5).json()
         coords = [[lat, lon] for lon, lat in r['routes'][0]['geometry']['coordinates']]
-        km = r['routes'][0]['distance']/1000
+        km = r['routes'][0]['distance'] / 1000
         return coords, km
     except:
         return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
@@ -59,6 +59,7 @@ def cargar_maestro(file):
     df = df[[c_n, c_e, c_norte]].dropna()
     df.columns = ['NAME', 'E', 'N']
 
+    # ⚠️ simplificado (asumiendo lat = N, lon = E)
     df['lat'] = df['N']
     df['lon'] = df['E']
 
@@ -68,7 +69,7 @@ def cargar_maestro(file):
 # ✅ VARIABLES GLOBALES
 puntos_validos = []
 all_coords = []
-colores = ["#00FFCC", "#FF007F", "#FFD700"]
+colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF"]
 
 # ✅ CARGA LOCAL
 db = cargar_maestro(open("COORDENADAS_GOR_V2.xlsx", "rb"))
@@ -86,10 +87,12 @@ with col_ui:
         nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
 
         puntos_validos = []
+        all_coords = []   # ✅ reset en cada ejecución
+        km_total = 0
 
         for i, n in enumerate(nombres):
             key = re.sub(r'[^a-zA-Z0-9]', '', n)
-            match = db[db['KEY'].str.contains(key)]
+            match = db[db['KEY'].str.contains(key, na=False)]
 
             if not match.empty:
                 fila = match.iloc[0]
@@ -103,14 +106,12 @@ with col_ui:
         if len(puntos_validos) >= 2:
 
             st.divider()
-            km_total = 0
 
             for i in range(len(puntos_validos)-1):
                 p1 = puntos_validos[i]
                 p2 = puntos_validos[i+1]
 
                 geom, km = obtener_ruta_osrm(p1, p2)
-
                 km_total += km
                 all_coords.extend(geom)
 
@@ -128,6 +129,7 @@ with col_ui:
 
 # ---------------- MAPA ----------------
 with col_map:
+
     if len(puntos_validos) >= 2:
 
         m = folium.Map(tiles=None)
@@ -137,18 +139,26 @@ with col_map:
             attr="Google"
         ).add_to(m)
 
-        # Rutas
+        # ✅ RUTAS
         for i in range(len(puntos_validos)-1):
             geom, _ = obtener_ruta_osrm(puntos_validos[i], puntos_validos[i+1])
             c = colores[i % len(colores)]
 
-            folium.PolyLine(geom, color=c, weight=5).add_to(m)
+            folium.PolyLine(
+                geom,
+                color=c,
+                weight=5,
+                opacity=0.8
+            ).add_to(m)
 
-        # Pins
+        # ✅ PINES
         for p in puntos_validos:
-            folium.Marker([p['lat'], p['lon']], tooltip=p['n']).add_to(m)
+            folium.Marker(
+                [p['lat'], p['lon']],
+                tooltip=p['n']
+            ).add_to(m)
 
-        # Fit bounds
+        # ✅ ZOOM AUTOMÁTICO
         if all_coords:
             sw = [min(p[0] for p in all_coords), min(p[1] for p in all_coords)]
             ne = [max(p[0] for p in all_coords), max(p[1] for p in all_coords)]
