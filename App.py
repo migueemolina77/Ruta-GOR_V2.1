@@ -129,6 +129,7 @@ if entrada:
         key = re.sub(r'[^a-zA-Z0-9]', '', n)
 
         match = db[db['KEY'].str.contains(key, case=False, na=False)]
+
         if not match.empty:
             puntos_validos.append({
                 'id': i+1,
@@ -137,6 +138,7 @@ if entrada:
                 'lon': match.iloc[0]['lon']
             })
 
+    # ✅ ESTE IF VA AL MISMO NIVEL QUE EL FOR
     if len(puntos_validos) >= 2:
 
         st.divider()
@@ -145,7 +147,27 @@ if entrada:
         all_coords = []
         colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF"]
 
-    for i in range(len(puntos_validos)-1):
+        # ✅ ESTE FOR VA DENTRO DEL IF
+        for i in range(len(puntos_validos)-1):
+            p_orig = puntos_validos[i]
+            p_dest = puntos_validos[i+1]
+
+            geom, km = obtener_ruta_osrm(p_orig, p_dest)
+
+            km_totales += km
+            all_coords.extend(geom)
+
+            st.markdown(f"""
+            <div class="tramo-card">
+                <div class="tramo-header">Tramo {i+1} ➔ {i+2}</div>
+                <div class="tramo-nombres"><b>{p_orig['n']}</b> ➔ <b>{p_dest['n']}</b></div>
+                <span class="tramo-distancia">{km:.2f} KM</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # ✅ ESTE VA FUERA DEL FOR
+        st.metric("DISTANCIA TOTAL", f"{km_totales:.2f} KM")
+
 
                 # --- LÓGICA DE ALERTAS BLINDADA ---
                 alerta_html = ""
