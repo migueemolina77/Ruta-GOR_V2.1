@@ -145,7 +145,7 @@ if entrada:
         all_coords = []
         colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF"]
 
-        for i in range(len(puntos_validos)-1):
+    for i in range(len(puntos_validos)-1):
 
                 # --- LÓGICA DE ALERTAS BLINDADA ---
                 alerta_html = ""
