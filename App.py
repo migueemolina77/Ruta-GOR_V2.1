@@ -188,10 +188,10 @@ with col_ui:
                 c = colores[i % len(colores)]
                 folium.PolyLine(geom, color=c, weight=5, opacity=0.8).add_to(m)
            
-            # Machines Profesionales
+# Machines Profesionales
             for p in puntos_validos:
                 c = colores[(p['id'] - 1) % len(colores)]
-            
+
                 label_html = f"""
                 <div style="text-align:center;">
                     
@@ -207,7 +207,7 @@ with col_ui:
                     ">
                         {p['id']}
                     </div>
-            
+
                     <div style="
                         background:rgba(14,17,23,0.9);
                         color:white;
@@ -220,26 +220,8 @@ with col_ui:
                     ">
                         ⛽ {p['n']}
                     </div>
-            
-                </div>
-                """  # ✅ ESTE CIERRE ES CLAVE
-            
-                folium.Marker(
-                    [p['lat'], p['lon']],
-                    icon=DivIcon(html=label_html, icon_anchor=(11, 11))
-                ).add_to(m)
-                        
-            # Caceríos visibles para referencia
-            for com, coord in COMUNIDADES.items():
-                    folium.Marker(
-                    [coord['lat'], coord['lon']], 
-                    icon=folium.Icon(color='orange', icon='house-user', prefix='fa'),
-                    tooltip=f"Comunidad: {com}"
-                ).add_to(m)
-                folium.Circle([coord['lat'], coord['lon']], radius=5000, color='orange', weight=1, fill=True, opacity=0.1).add_to(m)
 
-            if all_coords:
-                sw, ne = [min(p[0] for p in all_coords), min(p[1] for p in all_coords)], [max(p[0] for p in all_coords), max(p[1] for p in all_coords)]
-                m.fit_bounds([sw, ne])
-            
-            st_folium(m, width="100%", height=700)
+                </div>
+                """
+
+                folium.Marker(
