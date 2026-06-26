@@ -83,13 +83,15 @@ def obtener_ruta_osrm(p1, p2):
     except: pass
     return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
 
-@st.cache_data
+
+
+import os
 
 @st.cache_data
 def cargar_maestro():
     try:
-        # ✅ CARGA DIRECTA DESDE EXCEL LOCAL
-        df = pd.read_excel("COORDENADAS_GOR_V2.xlsx")
+        archivo = next(f for f in os.listdir() if f.endswith(".xlsx"))
+        df = pd.read_excel(archivo)
 
         df.columns = [re.sub(r'[^a-zA-Z]', '', str(c)).upper() for c in df.columns]
 
@@ -97,7 +99,7 @@ def cargar_maestro():
         c_e = next(c for c in df.columns if 'ESTE' in c)
         c_nt = next(c for c in df.columns if 'NORTE' in c)
 
-        df_f = df[[c_n, c_e, c_nt]].copy().dropna()
+        df_f = df[[c_n, c_e, c_nt]].dropna()
         df_f.columns = ['NAME', 'E', 'N']
 
         coords = df_f.apply(lambda r: proyectadas_a_latlon_colombia(r['E'], r['N']), axis=1)
@@ -107,7 +109,7 @@ def cargar_maestro():
 
         df_f['KEY'] = df_f['NAME'].str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
 
-        return df_f.dropna(subset=['lat'])
+        return df_f
 
     except Exception as e:
         st.error(f"Error cargando archivo: {e}")
