@@ -83,8 +83,6 @@ def obtener_ruta_osrm(p1, p2):
     except: pass
     return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
 
-
-
 import os
 
 @st.cache_data
@@ -120,15 +118,13 @@ def cargar_maestro():
 st.markdown("<h1 style='text-align: center;'>🦎 MAPA GOR - ECOPETROL</h1>", unsafe_allow_html=True)
 st.divider()
 
+archivo = st.file_uploader("📂 Por favor, cargue el archivo maestro de coordenadas:", type=["xlsx", "csv"])
 
-
-# ✅ Cargar archivo fijo desde el proyecto
-try:
-    db = cargar_maestro(open("COORDENADAS_GOR_V2.xlsx", "rb"))
-except:
-    st.error("❌ No se encontró el archivo COORDENADAS_GOR_V2.xlsx en el repositorio")
-    st.stop()
-
+if not archivo:
+    st.info("👋 **Bienvenido.** Por favor, carga el archivo maestro para iniciar la planificación.")
+else:
+    db = cargar_maestro(archivo)
+    col_ui, col_map = st.columns([1.1, 3])
     
     with col_ui:
         st.subheader("Plan de Ruta")
