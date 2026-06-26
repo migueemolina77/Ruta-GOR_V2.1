@@ -83,7 +83,6 @@ def obtener_ruta_osrm(p1, p2):
     except: pass
     return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
 
-@st.cache_data
 
 @st.cache_data
 def cargar_maestro():
