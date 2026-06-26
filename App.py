@@ -91,11 +91,6 @@ def cargar_maestro():
         archivo = next(f for f in os.listdir() if f.lower().endswith(".xlsx"))
         df = pd.read_excel(archivo)
 
-@st.cache_data
-def cargar_maestro():
-    try:
-        df = pd.read_excel("COORDENADAS_GOR_V2.xlsx")
-
         df.columns = [re.sub(r'[^a-zA-Z]', '', str(c)).upper() for c in df.columns]
 
         c_n = next(c for c in df.columns if any(k in c for k in ['POZO', 'NAME', 'CLUSTER']))
