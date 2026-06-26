@@ -116,8 +116,10 @@ col_ui, col_map = st.columns([1.1, 3])
 with col_ui:
     st.subheader("Plan de Ruta")
 
-    entrada = st.text_area("Lista de Pozos:", placeholder="Ej: CLUSTER-34\nCASE0092", height=150)
-    if entrada
+    
+entrada = st.text_area("Lista de Pozos:")
+
+if entrada:
 
     nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
 
@@ -135,19 +137,16 @@ with col_ui:
                 'lon': match.iloc[0]['lon']
             })
 
-        if len(puntos_validos) >= 2:
-            st.divider()
-            km_totales = 0
-            all_coords = []
-            colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF", "#7CFC00"]
-            
-            for i in range(len(puntos_validos)-1):
-                p_orig, p_dest = puntos_validos[i], puntos_validos[i+1]
-                geom, km = obtener_ruta_osrm(p_orig, p_dest)
-                km_totales += km
-                all_coords.extend(geom)
-                c = colores[i % len(colores)]
-                
+    if len(puntos_validos) >= 2:
+
+        st.divider()
+
+        km_totales = 0
+        all_coords = []
+        colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF"]
+
+        for i in range(len(puntos_validos)-1):
+
                 # --- LÓGICA DE ALERTAS BLINDADA ---
                 alerta_html = ""
                 
