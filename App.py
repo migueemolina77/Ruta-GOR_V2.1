@@ -120,10 +120,16 @@ with col_ui:
 
     
 # BOTON DE CONTROL
-buscar = st.button("🚀 Calcular Ruta")
+
+"ejecutar" not in st.session_state:
+    st.session_state.ejecutar = False
+
+if st.button("🚀 Calcular Ruta"):
+    st.session_state.ejecutar = True
+
 
 # SOLO CORRE CUANDO HAY CLICK
-if buscar and entrada:
+if st.session_state.ejecutar and entrada:
 
     nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
 
