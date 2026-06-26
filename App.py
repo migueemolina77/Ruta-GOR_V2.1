@@ -188,7 +188,8 @@ with col_ui:
                 c = colores[i % len(colores)]
                 folium.PolyLine(geom, color=c, weight=5, opacity=0.8).add_to(m)
             
-           # Machines Profesionales
+     
+# Machines Profesionales
 for p in puntos_validos:
     c = colores[(p['id'] - 1) % len(colores)]
 
@@ -224,6 +225,11 @@ for p in puntos_validos:
     </div>
     """
 
+    folium.Marker(
+        [p['lat'], p['lon']],
+        icon=DivIcon(html=label_html, icon_anchor=(11, 11))
+    ).add_to(m)
+     
     folium.Marker(
         [p['lat'], p['lon']],
         icon=DivIcon(html=label_html, icon_anchor=(11, 11))
