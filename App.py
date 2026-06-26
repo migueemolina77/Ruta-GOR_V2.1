@@ -190,14 +190,39 @@ with col_ui:
             
             # Machines Profesionales
             for p in puntos_validos:
-                c = colores[(p['id']-1) % len(colores)]
-                label_html = f"""
-                <div style="text-align: center;">
-                    <div style="background:{c}; color:black; border-radius:50%; width:22px; height:22px; line-height:22px; font-weight:bold; border:2px solid white; font-size:9pt;">{p['id']}</div>
-                    <div style="background:rgba(14, 17, 23, 0.9); color:white; padding:3px 8px; border-radius:5px; font-size:9pt; margin-top:4px; border:1px solid {c}; white-space:nowrap;">
-                        <i class="fa-solid fa-oil-well" style="color:{c};"></i> {p['n']}
-                    </div>
-                </div>"""
+                
+label_html = f"""
+<div style="text-align:center;">
+    
+    <div style="
+        background:{c};
+        color:black;
+        border-radius:50%;
+        width:28px;
+        height:28px;
+        line-height:28px;
+        font-weight:bold;
+        border:2px solid white;
+    ">
+        {p['id']}
+    </div>
+
+    <div style="
+        background:rgba(14,17,23,0.9);
+        color:white;
+        padding:4px 8px;
+        border-radius:6px;
+        font-size:10px;
+        margin-top:4px;
+        border:1px solid {c};
+        white-space:nowrap;
+    ">
+        ⛽ {p['n']}
+    </div>
+
+</div>
+"""
+
                 folium.Marker([p['lat'], p['lon']], icon=DivIcon(html=label_html, icon_anchor=(11, 11))).add_to(m)
             
             # Caceríos visibles para referencia
