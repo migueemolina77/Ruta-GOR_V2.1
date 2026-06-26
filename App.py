@@ -83,47 +83,31 @@ def obtener_ruta_osrm(p1, p2):
     except: pass
     return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
 
-import os
-
 @st.cache_data
-def cargar_maestro():
+def cargar_maestro(file):
     try:
-        archivo = next(f for f in os.listdir() if f.endswith(".xlsx"))
-        df = pd.read_excel(archivo)
-
+        df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file, encoding='latin-1', sep=None, engine='python')
         df.columns = [re.sub(r'[^a-zA-Z]', '', str(c)).upper() for c in df.columns]
-
         c_n = next(c for c in df.columns if any(k in c for k in ['POZO', 'NAME', 'CLUSTER']))
-        c_e = next(c for c in df.columns if 'ESTE' in c)
-        c_nt = next(c for c in df.columns if 'NORTE' in c)
-
-        df_f = df[[c_n, c_e, c_nt]].dropna()
+        c_e, c_nt = next(c for c in df.columns if 'ESTE' in c), next(c for c in df.columns if 'NORTE' in c)
+        df_f = df[[c_n, c_e, c_nt]].copy().dropna()
         df_f.columns = ['NAME', 'E', 'N']
-
         coords = df_f.apply(lambda r: proyectadas_a_latlon_colombia(r['E'], r['N']), axis=1)
-
-        df_f['lat'] = [c[0] for c in coords]
-        df_f['lon'] = [c[1] for c in coords]
-
-        df_f['KEY'] = df_f['NAME'].str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
-
-        return df_f
-
-    except Exception as e:
-        st.error(f"Error cargando archivo: {e}")
-        return pd.DataFrame()
-
+        df_f['lat'], df_f['lon'] = [c[0] for c in coords], [c[1] for c in coords]
+        df_f['KEY'] = df_f['NAME'].astype(str).str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
+        return df_f.dropna(subset=['lat'])
+    except: return pd.DataFrame()
 
 # --- INTERFAZ ---
 st.markdown("<h1 style='text-align: center;'>🦎 MAPA GOR - ECOPETROL</h1>", unsafe_allow_html=True)
 st.divider()
 
-archivo = st.file_uploader("📂 Por favor, cargue el archivo maestro de coordenadas:", type=["xlsx", "csv"])
-
-if not archivo:
-    st.info("👋 **Bienvenido.** Por favor, carga el archivo maestro para iniciar la planificación.")
-else:
-    db = cargar_maestro(archivo)
+# ✅ Cargar archivo fijo desde el proyecto
+try:
+    db = cargar_maestro(open("COORDENADAS_GOR_V2.xlsx", "rb"))
+except:
+    st.error("❌ No se encontró el archivo COORDENADAS_GOR_V2.xlsx en el repositorio")
+    st.stop()
     col_ui, col_map = st.columns([1.1, 3])
     
     with col_ui:
