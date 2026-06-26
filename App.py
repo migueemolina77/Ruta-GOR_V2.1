@@ -102,12 +102,16 @@ def cargar_maestro(file):
 st.markdown("<h1 style='text-align: center;'>🦎 MAPA GOR - ECOPETROL</h1>", unsafe_allow_html=True)
 st.divider()
 
-archivo = st.file_uploader("📂 Por favor, cargue el archivo maestro de coordenadas:", type=["xlsx", "csv"])
 
-if not archivo:
-    st.info("👋 **Bienvenido.** Por favor, carga el archivo maestro para iniciar la planificación.")
-else:
-    db = cargar_maestro(archivo)
+# ✅ CARGA LOCAL (ÚNICO CAMBIO)
+try:
+    archivo_local = open("COORDENADAS_GOR_V2.xlsx", "rb")
+    archivo_local.name = "COORDENADAS_GOR_V2.xlsx"  # ✅ clave para que tu función funcione igual
+    db = cargar_maestro(archivo_local)
+except:
+    st.error("❌ No se encontró el archivo COORDENADAS_GOR_V2.xlsx")
+    st.stop()
+
     col_ui, col_map = st.columns([1.1, 3])
     
     with col_ui:
