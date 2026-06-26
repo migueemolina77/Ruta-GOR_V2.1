@@ -103,33 +103,55 @@ st.markdown("<h1 style='text-align: center;'>🦎 MAPA GOR - ECOPETROL</h1>", un
 st.divider()
 
 # ✅ CARGAR ARCHIVO LOCAL (SIN UPLOADER)
-
 db = cargar_maestro(open("COORDENADAS_GOR_V2.xlsx", "rb"))
+
 col_ui, col_map = st.columns([1.1, 3])
-    
-    with col_ui:
-        st.subheader("Plan de Ruta")
-        entrada = st.text_area("Lista de Pozos:", placeholder="Ej: CLUSTER-34\nCASE0092", height=150)
+
+with col_ui:
+    st.subheader("Plan de Ruta")
+
+    entrada = st.text_area(
+        "Lista de Pozos:",
+        placeholder="Ej: CLUSTER-34\nCASE0092",
+        height=150
+    )
+
+    if entrada:
+
         nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
-        
+
         puntos_validos = []
+
         for i, n in enumerate(nombres):
             key = re.sub(r'[^a-zA-Z0-9]', '', n)
+
             match = db[db['KEY'].str.contains(key, case=False, na=False)]
+
             if not match.empty:
-                puntos_validos.append({'id': i+1, 'n': match.iloc[0]['NAME'], 'lat': match.iloc[0]['lat'], 'lon': match.iloc[0]['lon']})
+                puntos_validos.append({
+                    'id': i+1,
+                    'n': match.iloc[0]['NAME'],
+                    'lat': match.iloc[0]['lat'],
+                    'lon': match.iloc[0]['lon']
+                })
 
         if len(puntos_validos) >= 2:
+
             st.divider()
+
             km_totales = 0
             all_coords = []
             colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF", "#7CFC00"]
-            
+
             for i in range(len(puntos_validos)-1):
-                p_orig, p_dest = puntos_validos[i], puntos_validos[i+1]
+                p_orig = puntos_validos[i]
+                p_dest = puntos_validos[i+1]
+
                 geom, km = obtener_ruta_osrm(p_orig, p_dest)
+
                 km_totales += km
                 all_coords.extend(geom)
+
                 c = colores[i % len(colores)]
                 
                 # --- LÓGICA DE ALERTAS BLINDADA ---
