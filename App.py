@@ -102,47 +102,22 @@ def cargar_maestro(file):
 st.markdown("<h1 style='text-align: center;'>🦎 MAPA GOR - ECOPETROL</h1>", unsafe_allow_html=True)
 st.divider()
 
+# ✅ CARGAR ARCHIVO LOCAL (SIN UPLOADER)
 
-# ✅ Cargar archivo local
-try:
     db = cargar_maestro(open("COORDENADAS_GOR_V2.xlsx", "rb"))
-except:
-    st.error("❌ No se encontró el archivo COORDENADAS_GOR_V2.xlsx en el repositorio")
-    st.stop()
-
-# ✅ ESTO VA FUERA DEL TRY
-col_ui, col_map = st.columns([1.1, 3])
-
-with col_ui:
-    st.subheader("Plan de Ruta")
-
-    entrada = st.text_area("Lista de Pozos:", placeholder="Ej: CASE-34\nRB-31", height=150)
-
-
-# ✅ BOTÓN
-if st.button("🚀 Calcular Ruta"):
-    st.session_state.ejecutar = True
-
-# ✅ SOLO CORRE CUANDO HAY CLICK
-if st.session_state.ejecutar and entrada:
-    # ✅ RESETEO TOTAL
-    puntos_validos = []
-    all_coords = []
-    km_totales = 0
-
-    nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
-
-    for i, n in enumerate(nombres):
-        key = re.sub(r'[^a-zA-Z0-9]', '', n)
-
-        match = db[db['KEY'].str.contains(key, case=False, na=False)]
-        if not match.empty:
-            puntos_validos.append({
-                'id': i+1,
-                'n': match.iloc[0]['NAME'],
-                'lat': match.iloc[0]['lat'],
-                'lon': match.iloc[0]['lon']
-            })
+    col_ui, col_map = st.columns([1.1, 3])
+    
+    with col_ui:
+        st.subheader("Plan de Ruta")
+        entrada = st.text_area("Lista de Pozos:", placeholder="Ej: CLUSTER-34\nCASE0092", height=150)
+        nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
+        
+        puntos_validos = []
+        for i, n in enumerate(nombres):
+            key = re.sub(r'[^a-zA-Z0-9]', '', n)
+            match = db[db['KEY'].str.contains(key, case=False, na=False)]
+            if not match.empty:
+                puntos_validos.append({'id': i+1, 'n': match.iloc[0]['NAME'], 'lat': match.iloc[0]['lat'], 'lon': match.iloc[0]['lon']})
 
         if len(puntos_validos) >= 2:
             st.divider()
@@ -216,7 +191,7 @@ if st.session_state.ejecutar and entrada:
                 ).add_to(m)
                 folium.Circle([coord['lat'], coord['lon']], radius=5000, color='orange', weight=1, fill=True, opacity=0.1).add_to(m)
 
-            if all_coords:
+            if all_coords:	
                 sw, ne = [min(p[0] for p in all_coords), min(p[1] for p in all_coords)], [max(p[0] for p in all_coords), max(p[1] for p in all_coords)]
                 m.fit_bounds([sw, ne])
             
