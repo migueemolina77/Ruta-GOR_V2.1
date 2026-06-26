@@ -225,3 +225,30 @@ with col_ui:
                 """
 
                 folium.Marker(
+                    [p['lat'], p['lon']],
+                    icon=DivIcon(html=label_html, icon_anchor=(11, 11))
+                ).add_to(m)
+
+            # ✅ Caceríos visibles PARALELO (NO dentro del for)
+            for com, coord in COMUNIDADES.items():
+                folium.Marker(
+                    [coord['lat'], coord['lon']],
+                    icon=folium.Icon(color='orange', icon='house-user', prefix='fa'),
+                    tooltip=f"Comunidad: {com}"
+                ).add_to(m)
+
+                folium.Circle(
+                    [coord['lat'], coord['lon']],
+                    radius=5000,
+                    color='orange',
+                    weight=1,
+                    fill=True,
+                    opacity=0.1
+                ).add_to(m)
+
+            if all_coords:
+                sw = [min(p[0] for p in all_coords), min(p[1] for p in all_coords)]
+                ne = [max(p[0] for p in all_coords), max(p[1] for p in all_coords)]
+                m.fit_bounds([sw, ne])
+
+            st_folium(m, width="100%", height=700)
