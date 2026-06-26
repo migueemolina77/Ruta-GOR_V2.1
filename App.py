@@ -118,7 +118,6 @@ def cargar_maestro():
 st.markdown("<h1 style='text-align: center;'>🦎 MAPA GOR - ECOPETROL</h1>", unsafe_allow_html=True)
 st.divider()
 
-archivo = st.file_uploader("📂 Por favor, cargue el archivo maestro de coordenadas:", type=["xlsx", "csv"])
 
 
 # ✅ Cargar archivo fijo desde el proyecto
