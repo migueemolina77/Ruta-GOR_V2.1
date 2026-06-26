@@ -118,13 +118,15 @@ with col_ui:
 
     entrada = st.text_area("Lista de Pozos:", placeholder="Ej: CASE-34\nRB-31", height=150)
 
-    # BOTON DE CONTROL
-    buscar = st.button ("🚀Calcular Ruta")
+    
+# BOTON DE CONTROL
+buscar = st.button("🚀 Calcular Ruta")
 
-    # SOLO CORRE CUANDO HAY CLICk
-    if buscar and entrada:
+# SOLO CORRE CUANDO HAY CLICK
+if buscar and entrada:
 
     nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
+
 
     puntos_validos = []
 
