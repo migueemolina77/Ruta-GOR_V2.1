@@ -155,4 +155,3 @@ with col_map:
             m.fit_bounds([sw, ne])
 
         st_folium(m, height=600)
-``
