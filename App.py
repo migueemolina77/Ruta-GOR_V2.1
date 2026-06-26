@@ -103,9 +103,6 @@ st.markdown("<h1 style='text-align: center;'>🦎 MAPA GOR - ECOPETROL</h1>", un
 st.divider()
 
 
-# ✅ CARGAR ARCHIVO LOCAL (SIN UPLOADER)
-
-
 # ✅ Cargar archivo local
 try:
     db = cargar_maestro(open("COORDENADAS_GOR_V2.xlsx", "rb"))
@@ -120,6 +117,7 @@ with col_ui:
     st.subheader("Plan de Ruta")
 
     entrada = st.text_area("Lista de Pozos:", placeholder="Ej: CLUSTER-34\nCASE0092", height=150)
+    if entrada
 
     nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
 
