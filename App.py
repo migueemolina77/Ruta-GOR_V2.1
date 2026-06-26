@@ -104,9 +104,8 @@ st.divider()
 
 # ✅ CARGAR ARCHIVO LOCAL (SIN UPLOADER)
 
-db = cargar_maestro(open("COORDENADAS_GOR_V2.xlsx", "rb"))
-
-col_ui, col_map = st.columns([1.1, 3])
+    db = cargar_maestro(open("COORDENADAS_GOR_V2.xlsx", "rb"))
+    col_ui, col_map = st.columns([1.1, 3])
     
     with col_ui:
         st.subheader("Plan de Ruta")
