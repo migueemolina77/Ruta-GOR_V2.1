@@ -118,10 +118,6 @@ with col_ui:
 
     entrada = st.text_area("Lista de Pozos:", placeholder="Ej: CASE-34\nRB-31", height=150)
 
-    
-# ✅ CREAR ESTADO SOLO UNA VEZ
-if "ejecutar" not in st.session_state:
-    st.session_state.ejecutar = False
 
 # ✅ BOTÓN
 if st.button("🚀 Calcular Ruta"):
