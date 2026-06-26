@@ -84,7 +84,13 @@ def obtener_ruta_osrm(p1, p2):
     return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
 
 @st.cache_data
+
 def cargar_maestro(file):
+    try:
+        if hasattr(file, "name"):
+            df = pd.read_excel(file)
+        else:
+            df = pd.read_excel("COORDENADAS_GOR_V2.xlsx")
     try:
         df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file, encoding='latin-1', sep=None, engine='python')
         df.columns = [re.sub(r'[^a-zA-Z]', '', str(c)).upper() for c in df.columns]
