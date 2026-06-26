@@ -116,7 +116,13 @@ col_ui, col_map = st.columns([1.1, 3])
 with col_ui:
     st.subheader("Plan de Ruta")
 
-    entrada = st.text_area("Lista de Pozos:", placeholder="Ej: CLUSTER-34\nCASE0092", height=150)
+    entrada = st.text_area("Lista de Pozos:", placeholder="Ej: CASE-34\nRB-31", height=150)
+
+    # BOTON DE CONTROL
+    buscar = st.button ("🚀Calcular Ruta")
+
+    # SOLO CORRE CUANDO HAY CLICk
+    if buscar and entrada:
 
     nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
 
