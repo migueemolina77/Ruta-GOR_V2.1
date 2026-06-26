@@ -125,7 +125,7 @@ if "ejecutar" not in st.session_state:
 
 # ✅ BOTÓN
 if st.button("🚀 Calcular Ruta"):
-    st.session_state.ejecutar = True
+    st.session_state.ejecutar = False
 
 # ✅ SOLO CORRE CUANDO HAY CLICK
 if st.session_state.ejecutar and entrada:
