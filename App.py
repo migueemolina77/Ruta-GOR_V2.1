@@ -119,20 +119,18 @@ with col_ui:
     entrada = st.text_area("Lista de Pozos:", placeholder="Ej: CASE-34\nRB-31", height=150)
 
     
-# BOTON DE CONTROL
-
-"ejecutar" not in st.session_state:
+# ✅ CREAR ESTADO SOLO UNA VEZ
+if "ejecutar" not in st.session_state:
     st.session_state.ejecutar = False
 
+# ✅ BOTÓN
 if st.button("🚀 Calcular Ruta"):
     st.session_state.ejecutar = True
 
-
-# SOLO CORRE CUANDO HAY CLICK
+# ✅ SOLO CORRE CUANDO HAY CLICK
 if st.session_state.ejecutar and entrada:
 
     nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
-
 
     puntos_validos = []
 
