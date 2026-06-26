@@ -130,7 +130,7 @@ if entrada:
 
         match = db[db['KEY'].str.contains(key, case=False, na=False)]
 
-        if not match.empty:
+    if not match.empty:
             puntos_validos.append({
                 'id': i+1,
                 'n': match.iloc[0]['NAME'],
