@@ -188,50 +188,50 @@ with col_ui:
                 c = colores[i % len(colores)]
                 folium.PolyLine(geom, color=c, weight=5, opacity=0.8).add_to(m)
            
-# Machines Profesionales
-for p in puntos_validos:
-    c = colores[(p['id'] - 1) % len(colores)]
-
-    label_html = f"""
-    <div style="text-align:center;">
-        
-        <div style="
-            background:{c};
-            color:black;
-            border-radius:50%;
-            width:28px;
-            height:28px;
-            line-height:28px;
-            font-weight:bold;
-            border:2px solid white;
-        ">
-            {p['id']}
-        </div>
-
-        <div style="
-            background:rgba(14,17,23,0.9);
-            color:white;
-            padding:4px 8px;
-            border-radius:6px;
-            font-size:10px;
-            margin-top:4px;
-            border:1px solid {c};
-            white-space:nowrap;
-        ">
-            ⛽ {p['n']}
-        </div>
-
-    </div>
-    """  # ✅ ESTE CIERRE ES CLAVE
-
-    folium.Marker(
-        [p['lat'], p['lon']],
-        icon=DivIcon(html=label_html, icon_anchor=(11, 11))
-    ).add_to(m)
+            # Machines Profesionales
+            for p in puntos_validos:
+                c = colores[(p['id'] - 1) % len(colores)]
             
-            # Caceríos visibles para referencia
-for com, coord in COMUNIDADES.items():
+                label_html = f"""
+                <div style="text-align:center;">
+                    
+                    <div style="
+                        background:{c};
+                        color:black;
+                        border-radius:50%;
+                        width:28px;
+                        height:28px;
+                        line-height:28px;
+                        font-weight:bold;
+                        border:2px solid white;
+                    ">
+                        {p['id']}
+                    </div>
+            
+                    <div style="
+                        background:rgba(14,17,23,0.9);
+                        color:white;
+                        padding:4px 8px;
+                        border-radius:6px;
+                        font-size:10px;
+                        margin-top:4px;
+                        border:1px solid {c};
+                        white-space:nowrap;
+                    ">
+                        ⛽ {p['n']}
+                    </div>
+            
+                </div>
+                """  # ✅ ESTE CIERRE ES CLAVE
+            
                 folium.Marker(
+                    [p['lat'], p['lon']],
+                    icon=DivIcon(html=label_html, icon_anchor=(11, 11))
+                ).add_to(m)
+                        
+            # Caceríos visibles para referencia
+            for com, coord in COMUNIDADES.items():
+                    folium.Marker(
                     [coord['lat'], coord['lon']], 
                     icon=folium.Icon(color='orange', icon='house-user', prefix='fa'),
                     tooltip=f"Comunidad: {com}"
