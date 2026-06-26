@@ -136,8 +136,6 @@ if st.session_state.ejecutar and entrada:
 
     nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
 
-    puntos_validos = []
-
     for i, n in enumerate(nombres):
         key = re.sub(r'[^a-zA-Z0-9]', '', n)
 
