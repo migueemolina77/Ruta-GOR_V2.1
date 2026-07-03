@@ -7,6 +7,7 @@ import requests
 import math
 import os
 from folium.features import DivIcon
+from textwrap import dedent
 
 # --- CONFIGURACIÓN ESTÉTICA ---
 st.set_page_config(
@@ -105,7 +106,9 @@ COMUNIDADES = {
 # --- FUNCIONES TÉCNICAS ---
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
 
@@ -270,13 +273,12 @@ db = cargar_maestro(ARCHIVO_COORDENADAS)
 
 if db.empty:
     st.error(
-        f"❌ No se pudo cargar el archivo maestro interno: "
-        f"`{ARCHIVO_COORDENADAS}`"
+        f"❌ No se pudo cargar el archivo maestro interno: `{ARCHIVO_COORDENADAS}`"
     )
 
     st.warning(
-        "Verifica que el archivo esté en la misma carpeta donde está el archivo `.py` "
-        "del aplicativo Streamlit."
+        "Verifica que el archivo esté en la misma carpeta donde está el archivo "
+        "`App.py` del aplicativo Streamlit."
     )
 
 else:
@@ -287,7 +289,7 @@ else:
 
         entrada = st.text_area(
             "Lista de Pozos:",
-            placeholder="Ej: CLUSTER-34\nCASE0092",
+            placeholder="Ej: RB-91\nRB-158\nCASE-023",
             height=150
         )
 
@@ -319,17 +321,20 @@ else:
                     "lon": match.iloc[0]["lon"]
                 })
 
-        if len(puntos_validos) < 2:
-            st.info("Ingrese mínimo dos pozos o clusters para calcular la ruta.")
+        rutas_calculadas = []
+        all_coords = []
+        colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF", "#7CFC00"]
 
-        if len(puntos_validos) >= 2:
+        if len(nombres) > 0 and len(puntos_validos) == 0:
+            st.warning("No se encontraron coincidencias para los pozos ingresados.")
+
+        elif len(puntos_validos) == 1:
+            st.info("Ingrese mínimo dos pozos o clusters válidos para calcular la ruta.")
+
+        elif len(puntos_validos) >= 2:
             st.divider()
 
             km_totales = 0
-            all_coords = []
-            colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF", "#7CFC00"]
-
-            rutas_calculadas = []
 
             for i in range(len(puntos_validos) - 1):
                 p_orig = puntos_validos[i]
@@ -351,7 +356,7 @@ else:
 
                 alerta_html = ""
 
-                # Alerta de comunidades
+                # --- ALERTA DE COMUNIDADES ---
                 for com, coord in COMUNIDADES.items():
                     cerca_orig = (
                         haversine(
@@ -382,28 +387,29 @@ else:
                     )
 
                     if cerca_orig or cerca_dest or cerca_ruta:
-                        alerta_html += f"""
+                        alerta_html += dedent(f"""
                         <div class="alerta-box alerta-comunidad">
                             <i class="fa-solid fa-people-group"></i>
                             ALERTA: TRÁNSITO POR {com}
                         </div>
-                        """
+                        """)
 
-                # Alerta de despine
+                # --- ALERTA DE DESPINE ---
                 if km > 30:
-                    alerta_html += """
+                    alerta_html += dedent("""
                     <div class="alerta-box alerta-despine">
                         <i class="fa-solid fa-truck-moving"></i>
                         DESPINAR TORRE POR DISTANCIA
                     </div>
-                    """
+                    """)
 
-                st.markdown(f"""
+                # --- TARJETA VISUAL DEL TRAMO ---
+                card_html = dedent(f"""
                 <div class="tramo-card" style="border-left-color: {c};">
-                    <div class="tramo-header">Tramo {i + 1} ➔ {i + 2}</div>
+                    <div class="tramo-header">TRAMO {i + 1} ➜ {i + 2}</div>
 
                     <div class="tramo-nombres">
-                        <b>{p_orig["n"]}</b> ➔ <b>{p_dest["n"]}</b>
+                        <b>{p_orig["n"]}</b> ➜ <b>{p_dest["n"]}</b>
                     </div>
 
                     <span class="tramo-distancia" style="color:{c};">
@@ -412,7 +418,9 @@ else:
 
                     {alerta_html}
                 </div>
-                """, unsafe_allow_html=True)
+                """)
+
+                st.markdown(card_html, unsafe_allow_html=True)
 
             st.metric("DISTANCIA TOTAL", f"{km_totales:.2f} KM")
 
@@ -426,7 +434,7 @@ else:
                 name="Satélite"
             ).add_to(m)
 
-            # Pintar rutas en el mapa
+            # --- RUTAS EN EL MAPA ---
             for i, ruta in enumerate(rutas_calculadas):
                 c = colores[i % len(colores)]
 
@@ -437,11 +445,11 @@ else:
                     opacity=0.8
                 ).add_to(m)
 
-            # Marcadores de pozos / clusters
+            # --- MARCADORES DE POZOS / CLUSTERS ---
             for p in puntos_validos:
                 c = colores[(p["id"] - 1) % len(colores)]
 
-                label_html = f"""
+                label_html = dedent(f"""
                 <div style="text-align: center;">
                     <div style="
                         background:{c};
@@ -469,7 +477,7 @@ else:
                         {p["n"]}
                     </div>
                 </div>
-                """
+                """)
 
                 folium.Marker(
                     [p["lat"], p["lon"]],
@@ -479,7 +487,7 @@ else:
                     )
                 ).add_to(m)
 
-            # Comunidades visibles
+            # --- COMUNIDADES VISIBLES ---
             for com, coord in COMUNIDADES.items():
                 folium.Marker(
                     [coord["lat"], coord["lon"]],
@@ -500,6 +508,7 @@ else:
                     opacity=0.1
                 ).add_to(m)
 
+            # --- AJUSTE DE ZOOM AUTOMÁTICO ---
             if all_coords:
                 sw = [
                     min(p[0] for p in all_coords),
@@ -518,3 +527,6 @@ else:
                 width="100%",
                 height=700
             )
+
+        else:
+            st.info("Ingrese una ruta válida para visualizar el mapa.")
