@@ -75,28 +75,28 @@ PUNTOS_CRITICOS_VALIDACION = {
         "lon": -71.658505,
         "tipo": "COMUNIDAD",
         "alerta": "RESTRICCION NOCTURNA FIJA",
-        "radio_km": 5.0
+        "radio_km": 3.0
     },
     "SANTA HELENA": {
         "lat": 3.899376,
         "lon": -71.490427,
         "tipo": "COMUNIDAD",
         "alerta": "RESTRICCION NOCTURNA PROBABLE",
-        "radio_km": 5.0
+        "radio_km": 3.0
     },
     "BUENOS AIRES - RUBIALITO": {
         "lat": 3.793411,
         "lon": -71.384503,
         "tipo": "COMUNIDAD",
         "alerta": "RESTRICCION NOCTURNA PROBABLE",
-        "radio_km": 5.0
+        "radio_km": 3.0
     },
     "EL PORVENIR": {
         "lat": 3.765052,
         "lon": -71.363584,
         "tipo": "COMUNIDAD",
         "alerta": "RESTRICCION NOCTURNA PROBABLE",
-        "radio_km": 5.0
+        "radio_km": 3.0
     },
 
     # ==================================================
