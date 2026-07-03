@@ -10,11 +10,11 @@ from folium.features import DivIcon
 
 
 # ======================================================
-# CONFIGURACIÓN GENERAL
+# CONFIGURACION GENERAL
 # ======================================================
 
 st.set_page_config(
-    page_title="LOGÍSTICA RUBIALES V7.6 - VALIDACIÓN PUNTOS CRÍTICOS",
+    page_title="LOGISTICA RUBIALES V7.7 - ALERTAS AUTOMATICAS",
     layout="wide",
     page_icon="🦎"
 )
@@ -63,12 +63,8 @@ ARCHIVO_COORDENADAS = "COORDENADAS_GOR_V2.xlsx"
 
 
 # ======================================================
-# PUNTOS CRÍTICOS PARA VALIDACIÓN VISUAL
+# PUNTOS CRITICOS VALIDADOS
 # ======================================================
-# Nota:
-# Estos puntos se pintan en el mapa, pero todavía NO generan alertas automáticas
-# dentro de las tarjetas de tramo.
-# Primero validamos visualmente que las coordenadas coincidan con el mapa.
 
 PUNTOS_CRITICOS_VALIDACION = {
     # ==================================================
@@ -78,33 +74,33 @@ PUNTOS_CRITICOS_VALIDACION = {
         "lat": 3.775392,
         "lon": -71.658505,
         "tipo": "COMUNIDAD",
-        "alerta": "RESTRICCIÓN NOCTURNA FIJA",
+        "alerta": "RESTRICCION NOCTURNA FIJA",
         "radio_km": 5.0
     },
     "SANTA HELENA": {
         "lat": 3.899376,
         "lon": -71.490427,
         "tipo": "COMUNIDAD",
-        "alerta": "RESTRICCIÓN NOCTURNA PROBABLE",
+        "alerta": "RESTRICCION NOCTURNA PROBABLE",
         "radio_km": 5.0
     },
     "BUENOS AIRES - RUBIALITO": {
         "lat": 3.793411,
         "lon": -71.384503,
         "tipo": "COMUNIDAD",
-        "alerta": "RESTRICCIÓN NOCTURNA PROBABLE",
+        "alerta": "RESTRICCION NOCTURNA PROBABLE",
         "radio_km": 5.0
     },
     "EL PORVENIR": {
         "lat": 3.765052,
         "lon": -71.363584,
         "tipo": "COMUNIDAD",
-        "alerta": "RESTRICCIÓN NOCTURNA PROBABLE",
+        "alerta": "RESTRICCION NOCTURNA PROBABLE",
         "radio_km": 5.0
     },
 
     # ==================================================
-    # PUENTES / CAÑOS - PUNTOS DE DESPINE
+    # PUENTES / CANOS - PUNTOS DE DESPINE
     # ==================================================
     "PUENTE CPF 1": {
         "lat": 3.813599,
@@ -113,14 +109,14 @@ PUNTOS_CRITICOS_VALIDACION = {
         "alerta": "DESPINADO",
         "radio_km": 1.0
     },
-    "PUENTE CAÑO MASIFERIANO": {
+    "PUENTE CANO MASIFERIANO": {
         "lat": 3.799900,
         "lon": -71.472938,
         "tipo": "PUENTE",
         "alerta": "DESPINADO",
         "radio_km": 1.0
     },
-    "CAÑO FELICIANO": {
+    "CANO FELICIANO": {
         "lat": 3.852608,
         "lon": -71.420776,
         "tipo": "PUENTE",
@@ -156,12 +152,12 @@ PUNTOS_CRITICOS_VALIDACION = {
 
 
 # ======================================================
-# FUNCIONES TÉCNICAS
+# FUNCIONES TECNICAS
 # ======================================================
 
 def haversine(lat1, lon1, lat2, lon2):
     """
-    Calcula distancia aproximada entre dos coordenadas geográficas en kilómetros.
+    Calcula distancia aproximada entre dos coordenadas geograficas en kilometros.
     """
 
     R = 6371
@@ -180,10 +176,140 @@ def haversine(lat1, lon1, lat2, lon2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
+def distancia_punto_a_segmento_km(p_lat, p_lon, a_lat, a_lon, b_lat, b_lon):
+    """
+    Calcula la distancia minima aproximada entre un punto critico y un segmento de ruta.
+    Usa proyeccion local en km, suficiente para distancias cortas dentro del campo.
+    """
+
+    lat_ref = math.radians(p_lat)
+
+    km_por_grado_lat = 110.574
+    km_por_grado_lon = 111.320 * math.cos(lat_ref)
+
+    ax = (a_lon - p_lon) * km_por_grado_lon
+    ay = (a_lat - p_lat) * km_por_grado_lat
+
+    bx = (b_lon - p_lon) * km_por_grado_lon
+    by = (b_lat - p_lat) * km_por_grado_lat
+
+    dx = bx - ax
+    dy = by - ay
+
+    if dx == 0 and dy == 0:
+        return math.sqrt(ax ** 2 + ay ** 2)
+
+    t = -((ax * dx) + (ay * dy)) / (dx ** 2 + dy ** 2)
+    t = max(0, min(1, t))
+
+    punto_cercano_x = ax + t * dx
+    punto_cercano_y = ay + t * dy
+
+    distancia = math.sqrt(
+        punto_cercano_x ** 2 +
+        punto_cercano_y ** 2
+    )
+
+    return distancia
+
+
+def distancia_minima_a_ruta_km(lat, lon, geom):
+    """
+    Calcula la distancia minima entre un punto critico y toda la geometria de la ruta.
+    geom debe venir como lista: [[lat, lon], [lat, lon], ...]
+    """
+
+    if not geom or len(geom) == 0:
+        return None
+
+    if len(geom) == 1:
+        return haversine(lat, lon, geom[0][0], geom[0][1])
+
+    distancias = []
+
+    for i in range(len(geom) - 1):
+        a_lat, a_lon = geom[i]
+        b_lat, b_lon = geom[i + 1]
+
+        d = distancia_punto_a_segmento_km(
+            lat,
+            lon,
+            a_lat,
+            a_lon,
+            b_lat,
+            b_lon
+        )
+
+        distancias.append(d)
+
+    return min(distancias)
+
+
+def evaluar_alertas_puntos_criticos(geom):
+    """
+    Evalua si la ruta pasa dentro del radio de algun punto critico:
+    - Comunidad
+    - Puente / Cano
+    - Finca
+    """
+
+    alertas_detectadas = []
+
+    for nombre, punto in PUNTOS_CRITICOS_VALIDACION.items():
+
+        tipo = punto["tipo"]
+        radio_km = punto.get("radio_km", 1.0)
+
+        distancia_min = distancia_minima_a_ruta_km(
+            punto["lat"],
+            punto["lon"],
+            geom
+        )
+
+        if distancia_min is None:
+            continue
+
+        if distancia_min <= radio_km:
+
+            if tipo == "COMUNIDAD":
+                mensaje = (
+                    f"⚠️ {punto['alerta']}: ruta cercana a {nombre} "
+                    f"({distancia_min:.2f} km | radio {radio_km:.1f} km)"
+                )
+
+            elif tipo == "PUENTE":
+                mensaje = (
+                    f"🚧 DESPINAR TORRE: cruce cercano a {nombre} "
+                    f"({distancia_min:.2f} km | radio {radio_km:.1f} km)"
+                )
+
+            elif tipo == "FINCA":
+                mensaje = (
+                    f"🤝 {punto['alerta']}: ruta cercana a {nombre} "
+                    f"({distancia_min:.2f} km | radio {radio_km:.1f} km)"
+                )
+
+            else:
+                mensaje = (
+                    f"ℹ️ Punto critico cercano: {nombre} "
+                    f"({distancia_min:.2f} km | radio {radio_km:.1f} km)"
+                )
+
+            alertas_detectadas.append({
+                "tipo": tipo,
+                "nombre": nombre,
+                "mensaje": mensaje,
+                "distancia_km": distancia_min,
+                "radio_km": radio_km
+            })
+
+    return alertas_detectadas
+
+
 def proyectadas_a_latlon_colombia(este, norte):
     """
     Convierte coordenadas proyectadas a latitud/longitud.
-    Mantiene la lógica original del aplicativo funcional.
+    Mantiene la logica original del aplicativo funcional.
     """
 
     try:
@@ -255,8 +381,8 @@ def proyectadas_a_latlon_colombia(este, norte):
 
 def obtener_ruta_osrm(p1, p2):
     """
-    Consulta OSRM para obtener geometría y distancia de ruta.
-    Si OSRM falla, retorna línea recta entre los dos puntos.
+    Consulta OSRM para obtener geometria y distancia de ruta.
+    Si OSRM falla, retorna linea recta entre los dos puntos.
     """
 
     url = (
@@ -388,7 +514,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.caption("Versión V7.6 - Validación visual de comunidades, puentes/caños y fincas")
+st.caption("Version V7.7 - Alertas automaticas por comunidades, puentes/canos y fincas")
 
 st.divider()
 
@@ -498,16 +624,27 @@ with col_ui:
             km_totales += km
             all_coords.extend(geom)
 
+            # --------------------------------------------------
+            # ALERTAS AUTOMATICAS POR PUNTOS CRITICOS
+            # --------------------------------------------------
+
             alertas = []
 
+            alertas_puntos = evaluar_alertas_puntos_criticos(geom)
+            alertas.extend(alertas_puntos)
+
             # --------------------------------------------------
-            # ALERTA CONSERVADA POR DISTANCIA
+            # ALERTA POR DISTANCIA MAYOR A 30 KM
             # --------------------------------------------------
-            # Por ahora NO activamos alertas automáticas por puntos críticos.
-            # Primero validamos visualmente las coordenadas en el mapa.
 
             if km > 30:
-                alertas.append("🚚 DESPINAR TORRE POR DISTANCIA MAYOR A 30 KM")
+                alertas.append({
+                    "tipo": "DISTANCIA",
+                    "nombre": "DISTANCIA MAYOR A 30 KM",
+                    "mensaje": "🚚 DESPINAR TORRE POR DISTANCIA MAYOR A 30 KM",
+                    "distancia_km": km,
+                    "radio_km": None
+                })
 
             # --------------------------------------------------
             # TARJETA NATIVA STREAMLIT
@@ -529,8 +666,22 @@ with col_ui:
 
                 st.markdown(distancia_html, unsafe_allow_html=True)
 
+                if len(alertas) == 0:
+                    st.success("✅ Sin alertas críticas detectadas en este tramo.")
+
                 for alerta in alertas:
-                    st.error(alerta)
+
+                    if alerta["tipo"] in ["PUENTE", "DISTANCIA"]:
+                        st.error(alerta["mensaje"])
+
+                    elif alerta["tipo"] == "COMUNIDAD":
+                        st.warning(alerta["mensaje"])
+
+                    elif alerta["tipo"] == "FINCA":
+                        st.info(alerta["mensaje"])
+
+                    else:
+                        st.info(alerta["mensaje"])
 
         st.metric("DISTANCIA TOTAL", f"{km_totales:.2f} KM")
 
@@ -619,12 +770,8 @@ with col_map:
             ).add_to(m)
 
         # --------------------------------------------------
-        # PUNTOS CRÍTICOS EN VALIDACIÓN VISUAL
+        # PUNTOS CRITICOS EN MAPA
         # --------------------------------------------------
-        # Color:
-        # COMUNIDAD = naranja
-        # PUENTE = rojo
-        # FINCA = azul
 
         for nombre, punto in PUNTOS_CRITICOS_VALIDACION.items():
 
