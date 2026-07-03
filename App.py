@@ -14,7 +14,7 @@ from folium.features import DivIcon
 # ======================================================
 
 st.set_page_config(
-    page_title="LOGÍSTICA RUBIALES V7.5",
+    page_title="LOGÍSTICA RUBIALES V7.6 - VALIDACIÓN PUNTOS CRÍTICOS",
     layout="wide",
     page_icon="🦎"
 )
@@ -63,12 +63,95 @@ ARCHIVO_COORDENADAS = "COORDENADAS_GOR_V2.xlsx"
 
 
 # ======================================================
-# COORDENADAS DE REFERENCIA
+# PUNTOS CRÍTICOS PARA VALIDACIÓN VISUAL
 # ======================================================
+# Nota:
+# Estos puntos se pintan en el mapa, pero todavía NO generan alertas automáticas
+# dentro de las tarjetas de tramo.
+# Primero validamos visualmente que las coordenadas coincidan con el mapa.
 
-COMUNIDADES = {
-    "EL OASIS": {"lat": 3.965, "lon": -71.895},
-    "RUBIALITOS": {"lat": 3.910, "lon": -72.030}
+PUNTOS_CRITICOS_VALIDACION = {
+    # ==================================================
+    # COMUNIDADES
+    # ==================================================
+    "OASIS": {
+        "lat": 3.775392,
+        "lon": -71.658505,
+        "tipo": "COMUNIDAD",
+        "alerta": "RESTRICCIÓN NOCTURNA FIJA",
+        "radio_km": 5.0
+    },
+    "SANTA HELENA": {
+        "lat": 3.899376,
+        "lon": -71.490427,
+        "tipo": "COMUNIDAD",
+        "alerta": "RESTRICCIÓN NOCTURNA PROBABLE",
+        "radio_km": 5.0
+    },
+    "BUENOS AIRES - RUBIALITO": {
+        "lat": 3.793411,
+        "lon": -71.384503,
+        "tipo": "COMUNIDAD",
+        "alerta": "RESTRICCIÓN NOCTURNA PROBABLE",
+        "radio_km": 5.0
+    },
+    "EL PORVENIR": {
+        "lat": 3.765052,
+        "lon": -71.363584,
+        "tipo": "COMUNIDAD",
+        "alerta": "RESTRICCIÓN NOCTURNA PROBABLE",
+        "radio_km": 5.0
+    },
+
+    # ==================================================
+    # PUENTES / CAÑOS - PUNTOS DE DESPINE
+    # ==================================================
+    "PUENTE CPF 1": {
+        "lat": 3.813599,
+        "lon": -71.433355,
+        "tipo": "PUENTE",
+        "alerta": "DESPINADO",
+        "radio_km": 1.0
+    },
+    "PUENTE CAÑO MASIFERIANO": {
+        "lat": 3.799900,
+        "lon": -71.472938,
+        "tipo": "PUENTE",
+        "alerta": "DESPINADO",
+        "radio_km": 1.0
+    },
+    "CAÑO FELICIANO": {
+        "lat": 3.852608,
+        "lon": -71.420776,
+        "tipo": "PUENTE",
+        "alerta": "DESPINADO",
+        "radio_km": 1.0
+    },
+
+    # ==================================================
+    # FINCAS / RELACIONAMIENTO
+    # ==================================================
+    "LA PALOMA": {
+        "lat": 3.726750,
+        "lon": -71.421637,
+        "tipo": "FINCA",
+        "alerta": "RELACIONAMIENTO ENTORNO / TIERRAS",
+        "radio_km": 2.0
+    },
+    "LINCON": {
+        "lat": 3.723330,
+        "lon": -71.530597,
+        "tipo": "FINCA",
+        "alerta": "RELACIONAMIENTO ENTORNO / TIERRAS",
+        "radio_km": 2.0
+    },
+    "TIYABA": {
+        "lat": 3.809906,
+        "lon": -71.595794,
+        "tipo": "FINCA",
+        "alerta": "RELACIONAMIENTO ENTORNO / TIERRAS",
+        "radio_km": 2.0
+    }
 }
 
 
@@ -268,7 +351,7 @@ def cargar_maestro(ruta_archivo):
 def buscar_punto(db, nombre):
     """
     Busca un pozo o cluster dentro del maestro.
-    Usa coincidencia por KEY normalizada.
+    Usa coincidencia exacta primero y luego coincidencia parcial.
     """
 
     key = re.sub(r"[^a-zA-Z0-9]", "", nombre).upper()
@@ -279,8 +362,7 @@ def buscar_punto(db, nombre):
     match_exacto = db[db["KEY"] == key]
 
     if not match_exacto.empty:
-        fila = match_exacto.iloc[0]
-        return fila
+        return match_exacto.iloc[0]
 
     match_contiene = db[
         db["KEY"].str.contains(
@@ -292,8 +374,7 @@ def buscar_punto(db, nombre):
     ]
 
     if not match_contiene.empty:
-        fila = match_contiene.iloc[0]
-        return fila
+        return match_contiene.iloc[0]
 
     return None
 
@@ -306,6 +387,8 @@ st.markdown(
     "<h1 style='text-align: center;'>🦎 MAPA GOR - ECOPETROL</h1>",
     unsafe_allow_html=True
 )
+
+st.caption("Versión V7.6 - Validación visual de comunidades, puentes/caños y fincas")
 
 st.divider()
 
@@ -358,7 +441,7 @@ with col_ui:
     puntos_validos = []
     nombres_no_encontrados = []
 
-    for i, nombre in enumerate(nombres):
+    for nombre in nombres:
 
         fila = buscar_punto(db, nombre)
 
@@ -418,48 +501,13 @@ with col_ui:
             alertas = []
 
             # --------------------------------------------------
-            # ALERTA DE COMUNIDADES
+            # ALERTA CONSERVADA POR DISTANCIA
             # --------------------------------------------------
-
-            for com, coord in COMUNIDADES.items():
-
-                cerca_orig = (
-                    haversine(
-                        p_orig["lat"],
-                        p_orig["lon"],
-                        coord["lat"],
-                        coord["lon"]
-                    ) < 5.0
-                )
-
-                cerca_dest = (
-                    haversine(
-                        p_dest["lat"],
-                        p_dest["lon"],
-                        coord["lat"],
-                        coord["lon"]
-                    ) < 5.0
-                )
-
-                cerca_ruta = any(
-                    haversine(
-                        g[0],
-                        g[1],
-                        coord["lat"],
-                        coord["lon"]
-                    ) < 5.0
-                    for g in geom
-                )
-
-                if cerca_orig or cerca_dest or cerca_ruta:
-                    alertas.append(f"⚠️ ALERTA: Tránsito por {com}")
-
-            # --------------------------------------------------
-            # ALERTA DE DESPINE
-            # --------------------------------------------------
+            # Por ahora NO activamos alertas automáticas por puntos críticos.
+            # Primero validamos visualmente las coordenadas en el mapa.
 
             if km > 30:
-                alertas.append("🚚 DESPINAR TORRE POR DISTANCIA")
+                alertas.append("🚚 DESPINAR TORRE POR DISTANCIA MAYOR A 30 KM")
 
             # --------------------------------------------------
             # TARJETA NATIVA STREAMLIT
@@ -473,24 +521,16 @@ with col_ui:
                     f"**{p_orig['n']} ➜ {p_dest['n']}**"
                 )
 
-                st.markdown(
-                    f"""
-                    <h3 style="
-                        color:{c};
-                        margin-top:0px;
-                        margin-bottom:8px;
-                    ">
-                        {km:.2f} KM
-                    </h3>
-                    """,
-                    unsafe_allow_html=True
+                distancia_html = (
+                    f"<h3 style='color:{c}; margin-top:0px; margin-bottom:8px;'>"
+                    f"{km:.2f} KM"
+                    f"</h3>"
                 )
 
+                st.markdown(distancia_html, unsafe_allow_html=True)
+
                 for alerta in alertas:
-                    if "DESPINAR" in alerta:
-                        st.error(alerta)
-                    else:
-                        st.warning(alerta)
+                    st.error(alerta)
 
         st.metric("DISTANCIA TOTAL", f"{km_totales:.2f} KM")
 
@@ -579,30 +619,50 @@ with col_map:
             ).add_to(m)
 
         # --------------------------------------------------
-        # COMUNIDADES
+        # PUNTOS CRÍTICOS EN VALIDACIÓN VISUAL
         # --------------------------------------------------
+        # Color:
+        # COMUNIDAD = naranja
+        # PUENTE = rojo
+        # FINCA = azul
 
-        for com, coord in COMUNIDADES.items():
+        for nombre, punto in PUNTOS_CRITICOS_VALIDACION.items():
+
+            tipo = punto["tipo"]
+            radio_km = punto.get("radio_km", 1.0)
+
+            if tipo == "COMUNIDAD":
+                color = "orange"
+                icono = "users"
+            elif tipo == "PUENTE":
+                color = "red"
+                icono = "road"
+            elif tipo == "FINCA":
+                color = "blue"
+                icono = "home"
+            else:
+                color = "gray"
+                icono = "info-sign"
 
             folium.Marker(
-                [coord["lat"], coord["lon"]],
+                [punto["lat"], punto["lon"]],
                 icon=folium.Icon(
-                    color="orange",
-                    icon="home",
+                    color=color,
+                    icon=icono,
                     prefix="fa"
                 ),
-                tooltip=f"Comunidad: {com}"
+                tooltip=f"{tipo}: {nombre} - {punto['alerta']}"
             ).add_to(m)
 
             folium.Circle(
-                [coord["lat"], coord["lon"]],
-                radius=5000,
-                color="orange",
-                weight=1,
+                [punto["lat"], punto["lon"]],
+                radius=radio_km * 1000,
+                color=color,
+                weight=2,
                 fill=True,
                 fill_opacity=0.10,
-                opacity=0.40,
-                tooltip=f"Radio de alerta 5 km - {com}"
+                opacity=0.50,
+                tooltip=f"{nombre} | Radio {radio_km} km | {punto['alerta']}"
             ).add_to(m)
 
         # --------------------------------------------------
