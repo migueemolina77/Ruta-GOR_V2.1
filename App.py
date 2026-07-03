@@ -5,163 +5,399 @@ from streamlit_folium import st_folium
 import re
 import requests
 import math
+import os
 from folium.features import DivIcon
 
-# --- CONFIG ---
-st.set_page_config(page_title="LOGÍSTICA RUBIALES V7.4", layout="wide", page_icon="🦎")
+# --- CONFIGURACIÓN ESTÉTICA ---
+st.set_page_config(
+    page_title="LOGÍSTICA RUBIALES V7.4",
+    layout="wide",
+    page_icon="🦎"
+)
 
 st.markdown("""
 <style>
-.stApp { background-color: #0e1117; }
-.tramo-card {
-    margin-bottom: 12px;
-    padding: 15px;
-    background: #161b22;
-    border-radius: 10px;
-    border-left: 6px solid;
-    border: 1px solid #30363d;
-}
-.tramo-header { color: #8b949e; font-size: 0.75rem; }
-.tramo-nombres { color: white; font-weight: 600; }
-.tramo-distancia { font-size: 1.2rem; font-weight: bold; }
+    .stApp { background-color: #0e1117; }
+
+    h1 {
+        color: #ffffff;
+        font-family: 'Segoe UI', sans-serif;
+        font-weight: 800;
+        letter-spacing: -1px;
+    }
+
+    .tramo-card {
+        margin-bottom: 12px;
+        padding: 15px;
+        background: #161b22;
+        border-radius: 10px;
+        border-left: 6px solid;
+        border: 1px solid #30363d;
+    }
+
+    .tramo-header {
+        color: #8b949e;
+        font-size: 0.75rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .tramo-nombres {
+        color: #ffffff;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .tramo-distancia {
+        font-size: 1.3rem;
+        font-weight: 800;
+        margin-top: 5px;
+        display: block;
+    }
+
+    .alerta-box {
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: bold;
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+
+    .alerta-despine {
+        background: rgba(255, 75, 75, 0.15);
+        color: #ff4b4b;
+        border: 1px solid #ff4b4b;
+    }
+
+    .alerta-comunidad {
+        background: rgba(255, 184, 0, 0.15);
+        color: #ffb800;
+        border: 1px solid #ffb800;
+    }
 </style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align:center;'>🦎 MAPA GOR</h1>", unsafe_allow_html=True)
-st.divider()
 
-# --- COMUNIDADES ---
+# --- ARCHIVO MAESTRO LOCAL ---
+ARCHIVO_COORDENADAS = "COORDENADAS_GOR_V2.xlsx"
+
+
+# --- COORDENADAS DE REFERENCIA ---
 COMUNIDADES = {
     "EL OASIS": {"lat": 3.965, "lon": -71.895},
     "RUBIALITOS": {"lat": 3.910, "lon": -72.030}
 }
 
-# --- FUNCIONES ---
+
+# --- FUNCIONES TÉCNICAS ---
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+
+    a = (
+        math.sin(dphi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    )
+
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def proyectadas_a_latlon_colombia(este, norte):
+    try:
+        a = 6378137.0
+        f = 1 / 298.257222101
+        b = a * (1 - f)
+        e2 = (a ** 2 - b ** 2) / a ** 2
+
+        if este > 4000000:
+            lat0_deg = 4.0
+            lon0_deg = -73.0
+            k0 = 0.9992
+            FE = 5000000.0
+            FN = 2000000.0
+        else:
+            lat0_deg = 4.596200417
+            lon0_deg = -71.077507917
+            k0 = 1.0
+            FE = 1000000.0
+            FN = 1000000.0
+
+        lat0 = math.radians(lat0_deg)
+        lon0 = math.radians(lon0_deg)
+
+        M0 = a * (
+            (1 - e2 / 4 - 3 * e2 ** 2 / 64) * lat0
+            - (3 * e2 / 8 + 3 * e2 ** 2 / 32) * math.sin(2 * lat0)
+            + (15 * e2 ** 2 / 256) * math.sin(4 * lat0)
+        )
+
+        M = M0 + (norte - FN) / k0
+        mu = M / (a * (1 - e2 / 4 - 3 * e2 ** 2 / 64))
+
+        e1 = (1 - math.sqrt(1 - e2)) / (1 + math.sqrt(1 - e2))
+
+        phi1 = (
+            mu
+            + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * math.sin(2 * mu)
+            + (21 * e1 ** 2 / 16 - 55 * e1 ** 4 / 32) * math.sin(4 * mu)
+        )
+
+        N1 = a / math.sqrt(1 - e2 * math.sin(phi1) ** 2)
+        R1 = a * (1 - e2) / (1 - e2 * math.sin(phi1) ** 2) ** 1.5
+        D = (este - FE) / (N1 * k0)
+
+        lat = phi1 - (N1 * math.tan(phi1) / R1) * (
+            D ** 2 / 2
+            - (5 + 3 * math.tan(phi1) ** 2) * D ** 4 / 24
+        )
+
+        lon = lon0 + (
+            D
+            - (1 + 2 * math.tan(phi1) ** 2) * D ** 3 / 6
+        ) / math.cos(phi1)
+
+        return math.degrees(lat), math.degrees(lon)
+
+    except Exception:
+        return None, None
+
+
 def obtener_ruta_osrm(p1, p2):
-    url = f"http://router.project-osrm.org/route/v1/driving/{p1['lon']},{p1['lat']};{p2['lon']},{p2['lat']}?overview=full&geometries=geojson"
+    url = (
+        f"http://router.project-osrm.org/route/v1/driving/"
+        f"{p1['lon']},{p1['lat']};{p2['lon']},{p2['lat']}"
+        f"?overview=full&geometries=geojson"
+    )
+
     try:
         r = requests.get(url, timeout=5).json()
-        coords = [[lat, lon] for lon, lat in r['routes'][0]['geometry']['coordinates']]
-        km = r['routes'][0]['distance'] / 1000
-        return coords, km
-    except:
-        return [[p1['lat'], p1['lon']], [p2['lat'], p2['lon']]], 0
+
+        if r["code"] == "Ok":
+            coords = [
+                [lat, lon]
+                for lon, lat in r["routes"][0]["geometry"]["coordinates"]
+            ]
+
+            distancia = r["routes"][0]["distance"] / 1000
+
+            return coords, distancia
+
+    except Exception:
+        pass
+
+    return [[p1["lat"], p1["lon"]], [p2["lat"], p2["lon"]]], 0
+
 
 @st.cache_data
-def cargar_maestro(file):
-    df = pd.read_excel(file)
-    df.columns = [re.sub(r'[^a-zA-Z]', '', str(c)).upper() for c in df.columns]
+def cargar_maestro(ruta_archivo):
+    try:
+        if not os.path.exists(ruta_archivo):
+            return pd.DataFrame()
 
-    c_n = next(c for c in df.columns if 'POZO' in c or 'NAME' in c)
-    c_e = next(c for c in df.columns if 'ESTE' in c)
-    c_norte = next(c for c in df.columns if 'NORTE' in c)
+        if ruta_archivo.lower().endswith(".xlsx"):
+            df = pd.read_excel(ruta_archivo)
+        else:
+            df = pd.read_csv(
+                ruta_archivo,
+                encoding="latin-1",
+                sep=None,
+                engine="python"
+            )
 
-    df = df[[c_n, c_e, c_norte]].dropna()
-    df.columns = ['NAME', 'E', 'N']
+        df.columns = [
+            re.sub(r"[^a-zA-Z]", "", str(c)).upper()
+            for c in df.columns
+        ]
 
-    # ⚠️ simplificado (asumiendo lat = N, lon = E)
-    df['lat'] = df['N']
-    df['lon'] = df['E']
+        c_n = next(
+            c for c in df.columns
+            if any(k in c for k in ["POZO", "NAME", "CLUSTER"])
+        )
 
-    df['KEY'] = df['NAME'].str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
-    return df
+        c_e = next(c for c in df.columns if "ESTE" in c)
+        c_nt = next(c for c in df.columns if "NORTE" in c)
 
-# ✅ VARIABLES GLOBALES
-puntos_validos = []
-all_coords = []
-colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF"]
+        df_f = df[[c_n, c_e, c_nt]].copy().dropna()
+        df_f.columns = ["NAME", "E", "N"]
 
-# ✅ CARGA LOCAL
-db = cargar_maestro(open("COORDENADAS_GOR_V2.xlsx", "rb"))
+        coords = df_f.apply(
+            lambda r: proyectadas_a_latlon_colombia(r["E"], r["N"]),
+            axis=1
+        )
 
-# ✅ COLUMNAS
-col_ui, col_map = st.columns([1.1, 3])
+        df_f["lat"] = [c[0] for c in coords]
+        df_f["lon"] = [c[1] for c in coords]
 
-# ---------------- UI ----------------
-with col_ui:
-    st.subheader("Plan de Ruta")
+        df_f["KEY"] = (
+            df_f["NAME"]
+            .astype(str)
+            .str.replace(r"[^a-zA-Z0-9]", "", regex=True)
+            .str.upper()
+        )
 
-    entrada = st.text_area("Lista de Pozos")
+        return df_f.dropna(subset=["lat", "lon"])
 
-    if entrada:
-        nombres = [n.strip().upper() for n in re.split(r'[\n,]+', entrada) if n.strip()]
+    except Exception as e:
+        st.error(f"Error cargando archivo maestro: {e}")
+        return pd.DataFrame()
+
+
+# --- INTERFAZ ---
+st.markdown(
+    "<h1 style='text-align: center;'>🦎 MAPA GOR - ECOPETROL</h1>",
+    unsafe_allow_html=True
+)
+
+st.divider()
+
+# --- CARGA INTERNA DEL ARCHIVO ---
+db = cargar_maestro(ARCHIVO_COORDENADAS)
+
+if db.empty:
+    st.error(
+        f"❌ No se pudo cargar el archivo maestro interno: "
+        f"`{ARCHIVO_COORDENADAS}`"
+    )
+
+    st.warning(
+        "Verifica que el archivo esté en la misma carpeta donde está el archivo `.py` "
+        "del aplicativo Streamlit."
+    )
+
+else:
+    col_ui, col_map = st.columns([1.1, 3])
+
+    with col_ui:
+        st.subheader("Plan de Ruta")
+
+        entrada = st.text_area(
+            "Lista de Pozos:",
+            placeholder="Ej: CLUSTER-34\nCASE0092",
+            height=150
+        )
+
+        nombres = [
+            n.strip().upper()
+            for n in re.split(r"[\n,]+", entrada)
+            if n.strip()
+        ]
 
         puntos_validos = []
-        all_coords = []   # ✅ reset en cada ejecución
-        km_total = 0
 
         for i, n in enumerate(nombres):
-            key = re.sub(r'[^a-zA-Z0-9]', '', n)
-            match = db[db['KEY'].str.contains(key, na=False)]
+            key = re.sub(r"[^a-zA-Z0-9]", "", n)
+
+            match = db[
+                db["KEY"].str.contains(
+                    key,
+                    case=False,
+                    na=False,
+                    regex=False
+                )
+            ]
 
             if not match.empty:
-                fila = match.iloc[0]
                 puntos_validos.append({
-                    'id': i+1,
-                    'n': fila['NAME'],
-                    'lat': fila['lat'],
-                    'lon': fila['lon']
+                    "id": i + 1,
+                    "n": match.iloc[0]["NAME"],
+                    "lat": match.iloc[0]["lat"],
+                    "lon": match.iloc[0]["lon"]
                 })
 
-        if len(puntos_validos) >= 2:
+        if len(puntos_validos) < 2:
+            st.info("Ingrese mínimo dos pozos o clusters para calcular la ruta.")
 
+        if len(puntos_validos) >= 2:
             st.divider()
 
-            for i in range(len(puntos_validos)-1):
-                p1 = puntos_validos[i]
-                p2 = puntos_validos[i+1]
+            km_totales = 0
+            all_coords = []
+            colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF", "#7CFC00"]
 
-                geom, km = obtener_ruta_osrm(p1, p2)
-                km_total += km
+            rutas_calculadas = []
+
+            for i in range(len(puntos_validos) - 1):
+                p_orig = puntos_validos[i]
+                p_dest = puntos_validos[i + 1]
+
+                geom, km = obtener_ruta_osrm(p_orig, p_dest)
+
+                rutas_calculadas.append({
+                    "origen": p_orig,
+                    "destino": p_dest,
+                    "geom": geom,
+                    "km": km
+                })
+
+                km_totales += km
                 all_coords.extend(geom)
 
                 c = colores[i % len(colores)]
 
+                alerta_html = ""
+
+                # Alerta de comunidades
+                for com, coord in COMUNIDADES.items():
+                    cerca_orig = (
+                        haversine(
+                            p_orig["lat"],
+                            p_orig["lon"],
+                            coord["lat"],
+                            coord["lon"]
+                        ) < 5.0
+                    )
+
+                    cerca_dest = (
+                        haversine(
+                            p_dest["lat"],
+                            p_dest["lon"],
+                            coord["lat"],
+                            coord["lon"]
+                        ) < 5.0
+                    )
+
+                    cerca_ruta = any(
+                        haversine(
+                            g[0],
+                            g[1],
+                            coord["lat"],
+                            coord["lon"]
+                        ) < 5.0
+                        for g in geom
+                    )
+
+                    if cerca_orig or cerca_dest or cerca_ruta:
+                        alerta_html += f"""
+                        <div class="alerta-box alerta-comunidad">
+                            <i class="fa-solid fa-people-group"></i>
+                            ALERTA: TRÁNSITO POR {com}
+                        </div>
+                        """
+
+                # Alerta de despine
+                if km > 30:
+                    alerta_html += """
+                    <div class="alerta-box alerta-despine">
+                        <i class="fa-solid fa-truck-moving"></i>
+                        DESPINAR TORRE POR DISTANCIA
+                    </div>
+                    """
+
                 st.markdown(f"""
-                <div class="tramo-card" style="border-left-color:{c};">
-                    <div class="tramo-header">TRAMO {i+1}</div>
-                    <div class="tramo-nombres">{p1['n']} → {p2['n']}</div>
-                    <div class="tramo-distancia" style="color:{c};">{km:.2f} KM</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            st.metric("DISTANCIA TOTAL", f"{km_total:.2f} KM")
-
-# ---------------- MAPA ----------------
-with col_map:
-
-    if len(puntos_validos) >= 2:
-
-        m = folium.Map(tiles=None)
-
-        folium.TileLayer(
-            tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
-            attr="Google"
-        ).add_to(m)
-
-        # ✅ RUTAS
-        for i in range(len(puntos_validos)-1):
-            geom, _ = obtener_ruta_osrm(puntos_validos[i], puntos_validos[i+1])
-            c = colores[i % len(colores)]
-
-            folium.PolyLine(
-                geom,
-                color=c,
-                weight=5,
-                opacity=0.8
-            ).add_to(m)
-
-        # ✅ PINES
-        for p in puntos_validos:
-            folium.Marker(
-                [p['lat'], p['lon']],
-                tooltip=p['n']
-            ).add_to(m)
-
-        # ✅ ZOOM AUTOMÁTICO
-        if all_coords:
-            sw = [min(p[0] for p in all_coords), min(p[1] for p in all_coords)]
-            ne = [max(p[0] for p in all_coords), max(p[1] for p in all_coords)]
-            m.fit_bounds([sw, ne])
-
-        st_folium(m, height=600)
+                <div class="tramo-card" style="border-left-color: {c};">
+                    <div class="tramo-header">Tramo {i + 1} ➔ {i + 2}</div>
