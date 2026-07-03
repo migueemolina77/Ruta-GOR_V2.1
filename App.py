@@ -401,3 +401,120 @@ else:
                 st.markdown(f"""
                 <div class="tramo-card" style="border-left-color: {c};">
                     <div class="tramo-header">Tramo {i + 1} ➔ {i + 2}</div>
+
+                    <div class="tramo-nombres">
+                        <b>{p_orig["n"]}</b> ➔ <b>{p_dest["n"]}</b>
+                    </div>
+
+                    <span class="tramo-distancia" style="color:{c};">
+                        {km:.2f} KM
+                    </span>
+
+                    {alerta_html}
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.metric("DISTANCIA TOTAL", f"{km_totales:.2f} KM")
+
+    with col_map:
+        if len(puntos_validos) >= 2:
+            m = folium.Map(tiles=None)
+
+            folium.TileLayer(
+                tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+                attr="Google",
+                name="Satélite"
+            ).add_to(m)
+
+            # Pintar rutas en el mapa
+            for i, ruta in enumerate(rutas_calculadas):
+                c = colores[i % len(colores)]
+
+                folium.PolyLine(
+                    ruta["geom"],
+                    color=c,
+                    weight=5,
+                    opacity=0.8
+                ).add_to(m)
+
+            # Marcadores de pozos / clusters
+            for p in puntos_validos:
+                c = colores[(p["id"] - 1) % len(colores)]
+
+                label_html = f"""
+                <div style="text-align: center;">
+                    <div style="
+                        background:{c};
+                        color:black;
+                        border-radius:50%;
+                        width:22px;
+                        height:22px;
+                        line-height:22px;
+                        font-weight:bold;
+                        border:2px solid white;
+                        font-size:9pt;">
+                        {p["id"]}
+                    </div>
+
+                    <div style="
+                        background:rgba(14, 17, 23, 0.9);
+                        color:white;
+                        padding:3px 8px;
+                        border-radius:5px;
+                        font-size:9pt;
+                        margin-top:4px;
+                        border:1px solid {c};
+                        white-space:nowrap;">
+                        <i class="fa-solid fa-oil-well" style="color:{c};"></i>
+                        {p["n"]}
+                    </div>
+                </div>
+                """
+
+                folium.Marker(
+                    [p["lat"], p["lon"]],
+                    icon=DivIcon(
+                        html=label_html,
+                        icon_anchor=(11, 11)
+                    )
+                ).add_to(m)
+
+            # Comunidades visibles
+            for com, coord in COMUNIDADES.items():
+                folium.Marker(
+                    [coord["lat"], coord["lon"]],
+                    icon=folium.Icon(
+                        color="orange",
+                        icon="house-user",
+                        prefix="fa"
+                    ),
+                    tooltip=f"Comunidad: {com}"
+                ).add_to(m)
+
+                folium.Circle(
+                    [coord["lat"], coord["lon"]],
+                    radius=5000,
+                    color="orange",
+                    weight=1,
+                    fill=True,
+                    opacity=0.1
+                ).add_to(m)
+
+            if all_coords:
+                sw = [
+                    min(p[0] for p in all_coords),
+                    min(p[1] for p in all_coords)
+                ]
+
+                ne = [
+                    max(p[0] for p in all_coords),
+                    max(p[1] for p in all_coords)
+                ]
+
+                m.fit_bounds([sw, ne])
+
+            st_folium(
+                m,
+                width="100%",
+                height=700
+            )
