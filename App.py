@@ -7,18 +7,28 @@ import requests
 import math
 import os
 from folium.features import DivIcon
-from textwrap import dedent
 
-# --- CONFIGURACIÓN ESTÉTICA ---
+
+# ======================================================
+# CONFIGURACIÓN GENERAL
+# ======================================================
+
 st.set_page_config(
-    page_title="LOGÍSTICA RUBIALES V7.4",
+    page_title="LOGÍSTICA RUBIALES V7.5",
     layout="wide",
     page_icon="🦎"
 )
 
+
+# ======================================================
+# ESTILO GENERAL
+# ======================================================
+
 st.markdown("""
 <style>
-    .stApp { background-color: #0e1117; }
+    .stApp {
+        background-color: #0e1117;
+    }
 
     h1 {
         color: #ffffff;
@@ -27,64 +37,17 @@ st.markdown("""
         letter-spacing: -1px;
     }
 
-    .tramo-card {
-        margin-bottom: 12px;
-        padding: 15px;
-        background: #161b22;
-        border-radius: 10px;
-        border-left: 6px solid;
-        border: 1px solid #30363d;
-    }
-
-    .tramo-header {
-        color: #8b949e;
-        font-size: 0.75rem;
+    .stTextArea label {
+        color: white !important;
         font-weight: bold;
-        text-transform: uppercase;
-        margin-bottom: 4px;
     }
 
-    .tramo-nombres {
-        color: #ffffff;
-        font-size: 1rem;
-        font-weight: 600;
+    .stMetric label {
+        color: #8b949e !important;
     }
 
-    .tramo-distancia {
-        font-size: 1.3rem;
-        font-weight: 800;
-        margin-top: 5px;
-        display: block;
-    }
-
-    .alerta-box {
-        padding: 10px 14px;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        font-weight: bold;
-        margin-top: 10px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.7; }
-        100% { opacity: 1; }
-    }
-
-    .alerta-despine {
-        background: rgba(255, 75, 75, 0.15);
-        color: #ff4b4b;
-        border: 1px solid #ff4b4b;
-    }
-
-    .alerta-comunidad {
-        background: rgba(255, 184, 0, 0.15);
-        color: #ffb800;
-        border: 1px solid #ffb800;
+    .stMetric div {
+        color: white !important;
     }
 </style>
 
@@ -92,23 +55,37 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- ARCHIVO MAESTRO LOCAL ---
+# ======================================================
+# ARCHIVO MAESTRO LOCAL
+# ======================================================
+
 ARCHIVO_COORDENADAS = "COORDENADAS_GOR_V2.xlsx"
 
 
-# --- COORDENADAS DE REFERENCIA ---
+# ======================================================
+# COORDENADAS DE REFERENCIA
+# ======================================================
+
 COMUNIDADES = {
     "EL OASIS": {"lat": 3.965, "lon": -71.895},
     "RUBIALITOS": {"lat": 3.910, "lon": -72.030}
 }
 
 
-# --- FUNCIONES TÉCNICAS ---
+# ======================================================
+# FUNCIONES TÉCNICAS
+# ======================================================
+
 def haversine(lat1, lon1, lat2, lon2):
+    """
+    Calcula distancia aproximada entre dos coordenadas geográficas en kilómetros.
+    """
+
     R = 6371
 
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
+
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
 
@@ -121,7 +98,15 @@ def haversine(lat1, lon1, lat2, lon2):
 
 
 def proyectadas_a_latlon_colombia(este, norte):
+    """
+    Convierte coordenadas proyectadas a latitud/longitud.
+    Mantiene la lógica original del aplicativo funcional.
+    """
+
     try:
+        este = float(este)
+        norte = float(norte)
+
         a = 6378137.0
         f = 1 / 298.257222101
         b = a * (1 - f)
@@ -161,7 +146,12 @@ def proyectadas_a_latlon_colombia(este, norte):
         )
 
         N1 = a / math.sqrt(1 - e2 * math.sin(phi1) ** 2)
-        R1 = a * (1 - e2) / (1 - e2 * math.sin(phi1) ** 2) ** 1.5
+
+        R1 = (
+            a * (1 - e2)
+            / (1 - e2 * math.sin(phi1) ** 2) ** 1.5
+        )
+
         D = (este - FE) / (N1 * k0)
 
         lat = phi1 - (N1 * math.tan(phi1) / R1) * (
@@ -181,22 +171,28 @@ def proyectadas_a_latlon_colombia(este, norte):
 
 
 def obtener_ruta_osrm(p1, p2):
+    """
+    Consulta OSRM para obtener geometría y distancia de ruta.
+    Si OSRM falla, retorna línea recta entre los dos puntos.
+    """
+
     url = (
-        f"http://router.project-osrm.org/route/v1/driving/"
+        "http://router.project-osrm.org/route/v1/driving/"
         f"{p1['lon']},{p1['lat']};{p2['lon']},{p2['lat']}"
-        f"?overview=full&geometries=geojson"
+        "?overview=full&geometries=geojson"
     )
 
     try:
-        r = requests.get(url, timeout=5).json()
+        respuesta = requests.get(url, timeout=8)
+        data = respuesta.json()
 
-        if r["code"] == "Ok":
+        if data.get("code") == "Ok":
             coords = [
                 [lat, lon]
-                for lon, lat in r["routes"][0]["geometry"]["coordinates"]
+                for lon, lat in data["routes"][0]["geometry"]["coordinates"]
             ]
 
-            distancia = r["routes"][0]["distance"] / 1000
+            distancia = data["routes"][0]["distance"] / 1000
 
             return coords, distancia
 
@@ -208,6 +204,11 @@ def obtener_ruta_osrm(p1, p2):
 
 @st.cache_data
 def cargar_maestro(ruta_archivo):
+    """
+    Carga el archivo maestro de coordenadas desde archivo local.
+    El archivo debe estar en la misma carpeta del App.py.
+    """
+
     try:
         if not os.path.exists(ruta_archivo):
             return pd.DataFrame()
@@ -235,7 +236,9 @@ def cargar_maestro(ruta_archivo):
         c_e = next(c for c in df.columns if "ESTE" in c)
         c_nt = next(c for c in df.columns if "NORTE" in c)
 
-        df_f = df[[c_n, c_e, c_nt]].copy().dropna()
+        df_f = df[[c_n, c_e, c_nt]].copy()
+        df_f = df_f.dropna()
+
         df_f.columns = ["NAME", "E", "N"]
 
         coords = df_f.apply(
@@ -253,14 +256,52 @@ def cargar_maestro(ruta_archivo):
             .str.upper()
         )
 
-        return df_f.dropna(subset=["lat", "lon"])
+        df_f = df_f.dropna(subset=["lat", "lon"])
+
+        return df_f
 
     except Exception as e:
         st.error(f"Error cargando archivo maestro: {e}")
         return pd.DataFrame()
 
 
-# --- INTERFAZ ---
+def buscar_punto(db, nombre):
+    """
+    Busca un pozo o cluster dentro del maestro.
+    Usa coincidencia por KEY normalizada.
+    """
+
+    key = re.sub(r"[^a-zA-Z0-9]", "", nombre).upper()
+
+    if key == "":
+        return None
+
+    match_exacto = db[db["KEY"] == key]
+
+    if not match_exacto.empty:
+        fila = match_exacto.iloc[0]
+        return fila
+
+    match_contiene = db[
+        db["KEY"].str.contains(
+            key,
+            case=False,
+            na=False,
+            regex=False
+        )
+    ]
+
+    if not match_contiene.empty:
+        fila = match_contiene.iloc[0]
+        return fila
+
+    return None
+
+
+# ======================================================
+# INTERFAZ PRINCIPAL
+# ======================================================
+
 st.markdown(
     "<h1 style='text-align: center;'>🦎 MAPA GOR - ECOPETROL</h1>",
     unsafe_allow_html=True
@@ -268,7 +309,11 @@ st.markdown(
 
 st.divider()
 
-# --- CARGA INTERNA DEL ARCHIVO ---
+
+# ======================================================
+# CARGA INTERNA DEL ARCHIVO
+# ======================================================
+
 db = cargar_maestro(ARCHIVO_COORDENADAS)
 
 if db.empty:
@@ -277,256 +322,312 @@ if db.empty:
     )
 
     st.warning(
-        "Verifica que el archivo esté en la misma carpeta donde está el archivo "
-        "`App.py` del aplicativo Streamlit."
+        "Verifica que el archivo esté en la misma carpeta donde está `App.py`."
     )
 
-else:
-    col_ui, col_map = st.columns([1.1, 3])
+    st.stop()
 
-    with col_ui:
-        st.subheader("Plan de Ruta")
 
-        entrada = st.text_area(
-            "Lista de Pozos:",
-            placeholder="Ej: RB-91\nRB-158\nCASE-023",
-            height=150
+# ======================================================
+# LAYOUT
+# ======================================================
+
+col_ui, col_map = st.columns([1.1, 3])
+
+
+# ======================================================
+# PANEL IZQUIERDO
+# ======================================================
+
+with col_ui:
+
+    st.subheader("Plan de Ruta")
+
+    entrada = st.text_area(
+        "Lista de Pozos:",
+        placeholder="Ejemplo:\nRB-91\nRB-158\nCASE-023",
+        height=150
+    )
+
+    nombres = [
+        n.strip().upper()
+        for n in re.split(r"[\n,]+", entrada)
+        if n.strip()
+    ]
+
+    puntos_validos = []
+    nombres_no_encontrados = []
+
+    for i, nombre in enumerate(nombres):
+
+        fila = buscar_punto(db, nombre)
+
+        if fila is not None:
+            puntos_validos.append({
+                "id": len(puntos_validos) + 1,
+                "buscado": nombre,
+                "n": fila["NAME"],
+                "lat": float(fila["lat"]),
+                "lon": float(fila["lon"])
+            })
+        else:
+            nombres_no_encontrados.append(nombre)
+
+    if nombres_no_encontrados:
+        st.warning(
+            "No encontrados: "
+            + ", ".join(nombres_no_encontrados)
         )
 
-        nombres = [
-            n.strip().upper()
-            for n in re.split(r"[\n,]+", entrada)
-            if n.strip()
-        ]
+    rutas_calculadas = []
+    all_coords = []
+    colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF", "#7CFC00"]
 
-        puntos_validos = []
+    if len(nombres) == 0:
+        st.info("Ingrese mínimo dos pozos o clusters para calcular la ruta.")
 
-        for i, n in enumerate(nombres):
-            key = re.sub(r"[^a-zA-Z0-9]", "", n)
+    elif len(puntos_validos) < 2:
+        st.info("Ingrese mínimo dos pozos o clusters válidos para calcular la ruta.")
 
-            match = db[
-                db["KEY"].str.contains(
-                    key,
-                    case=False,
-                    na=False,
-                    regex=False
+    else:
+        st.divider()
+
+        km_totales = 0
+
+        for i in range(len(puntos_validos) - 1):
+
+            p_orig = puntos_validos[i]
+            p_dest = puntos_validos[i + 1]
+
+            geom, km = obtener_ruta_osrm(p_orig, p_dest)
+
+            c = colores[i % len(colores)]
+
+            rutas_calculadas.append({
+                "tramo": i + 1,
+                "origen": p_orig,
+                "destino": p_dest,
+                "geom": geom,
+                "km": km,
+                "color": c
+            })
+
+            km_totales += km
+            all_coords.extend(geom)
+
+            alertas = []
+
+            # --------------------------------------------------
+            # ALERTA DE COMUNIDADES
+            # --------------------------------------------------
+
+            for com, coord in COMUNIDADES.items():
+
+                cerca_orig = (
+                    haversine(
+                        p_orig["lat"],
+                        p_orig["lon"],
+                        coord["lat"],
+                        coord["lon"]
+                    ) < 5.0
                 )
-            ]
 
-            if not match.empty:
-                puntos_validos.append({
-                    "id": i + 1,
-                    "n": match.iloc[0]["NAME"],
-                    "lat": match.iloc[0]["lat"],
-                    "lon": match.iloc[0]["lon"]
-                })
+                cerca_dest = (
+                    haversine(
+                        p_dest["lat"],
+                        p_dest["lon"],
+                        coord["lat"],
+                        coord["lon"]
+                    ) < 5.0
+                )
 
-        rutas_calculadas = []
-        all_coords = []
-        colores = ["#00FFCC", "#FF007F", "#FFD700", "#00BFFF", "#7CFC00"]
+                cerca_ruta = any(
+                    haversine(
+                        g[0],
+                        g[1],
+                        coord["lat"],
+                        coord["lon"]
+                    ) < 5.0
+                    for g in geom
+                )
 
-        if len(nombres) > 0 and len(puntos_validos) == 0:
-            st.warning("No se encontraron coincidencias para los pozos ingresados.")
+                if cerca_orig or cerca_dest or cerca_ruta:
+                    alertas.append(f"⚠️ ALERTA: Tránsito por {com}")
 
-        elif len(puntos_validos) == 1:
-            st.info("Ingrese mínimo dos pozos o clusters válidos para calcular la ruta.")
+            # --------------------------------------------------
+            # ALERTA DE DESPINE
+            # --------------------------------------------------
 
-        elif len(puntos_validos) >= 2:
-            st.divider()
+            if km > 30:
+                alertas.append("🚚 DESPINAR TORRE POR DISTANCIA")
 
-            km_totales = 0
+            # --------------------------------------------------
+            # TARJETA NATIVA STREAMLIT
+            # --------------------------------------------------
 
-            for i in range(len(puntos_validos) - 1):
-                p_orig = puntos_validos[i]
-                p_dest = puntos_validos[i + 1]
+            with st.container(border=True):
 
-                geom, km = obtener_ruta_osrm(p_orig, p_dest)
+                st.caption(f"TRAMO {i + 1} ➜ {i + 2}")
 
-                rutas_calculadas.append({
-                    "origen": p_orig,
-                    "destino": p_dest,
-                    "geom": geom,
-                    "km": km
-                })
+                st.markdown(
+                    f"**{p_orig['n']} ➜ {p_dest['n']}**"
+                )
 
-                km_totales += km
-                all_coords.extend(geom)
-
-                c = colores[i % len(colores)]
-
-                alerta_html = ""
-
-                # --- ALERTA DE COMUNIDADES ---
-                for com, coord in COMUNIDADES.items():
-                    cerca_orig = (
-                        haversine(
-                            p_orig["lat"],
-                            p_orig["lon"],
-                            coord["lat"],
-                            coord["lon"]
-                        ) < 5.0
-                    )
-
-                    cerca_dest = (
-                        haversine(
-                            p_dest["lat"],
-                            p_dest["lon"],
-                            coord["lat"],
-                            coord["lon"]
-                        ) < 5.0
-                    )
-
-                    cerca_ruta = any(
-                        haversine(
-                            g[0],
-                            g[1],
-                            coord["lat"],
-                            coord["lon"]
-                        ) < 5.0
-                        for g in geom
-                    )
-
-                    if cerca_orig or cerca_dest or cerca_ruta:
-                        alerta_html += dedent(f"""
-                        <div class="alerta-box alerta-comunidad">
-                            <i class="fa-solid fa-people-group"></i>
-                            ALERTA: TRÁNSITO POR {com}
-                        </div>
-                        """)
-
-                # --- ALERTA DE DESPINE ---
-                if km > 30:
-                    alerta_html += dedent("""
-                    <div class="alerta-box alerta-despine">
-                        <i class="fa-solid fa-truck-moving"></i>
-                        DESPINAR TORRE POR DISTANCIA
-                    </div>
-                    """)
-
-                # --- TARJETA VISUAL DEL TRAMO ---
-                card_html = dedent(f"""
-                <div class="tramo-card" style="border-left-color: {c};">
-                    <div class="tramo-header">TRAMO {i + 1} ➜ {i + 2}</div>
-
-                    <div class="tramo-nombres">
-                        <b>{p_orig["n"]}</b> ➜ <b>{p_dest["n"]}</b>
-                    </div>
-
-                    <span class="tramo-distancia" style="color:{c};">
+                st.markdown(
+                    f"""
+                    <h3 style="
+                        color:{c};
+                        margin-top:0px;
+                        margin-bottom:8px;
+                    ">
                         {km:.2f} KM
-                    </span>
+                    </h3>
+                    """,
+                    unsafe_allow_html=True
+                )
 
-                    {alerta_html}
-                </div>
-                """)
+                for alerta in alertas:
+                    if "DESPINAR" in alerta:
+                        st.error(alerta)
+                    else:
+                        st.warning(alerta)
 
-                st.markdown(card_html, unsafe_allow_html=True)
+        st.metric("DISTANCIA TOTAL", f"{km_totales:.2f} KM")
 
-            st.metric("DISTANCIA TOTAL", f"{km_totales:.2f} KM")
 
-    with col_map:
-        if len(puntos_validos) >= 2:
-            m = folium.Map(tiles=None)
+# ======================================================
+# MAPA DERECHO
+# ======================================================
 
-            folium.TileLayer(
-                tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
-                attr="Google",
-                name="Satélite"
+with col_map:
+
+    if len(puntos_validos) >= 2 and len(rutas_calculadas) > 0:
+
+        m = folium.Map(
+            tiles=None,
+            zoom_control=True
+        )
+
+        folium.TileLayer(
+            tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+            attr="Google",
+            name="Satélite"
+        ).add_to(m)
+
+        # --------------------------------------------------
+        # RUTAS
+        # --------------------------------------------------
+
+        for ruta in rutas_calculadas:
+
+            folium.PolyLine(
+                ruta["geom"],
+                color=ruta["color"],
+                weight=5,
+                opacity=0.85,
+                tooltip=(
+                    f"Tramo {ruta['tramo']}: "
+                    f"{ruta['origen']['n']} ➜ {ruta['destino']['n']} "
+                    f"({ruta['km']:.2f} KM)"
+                )
             ).add_to(m)
 
-            # --- RUTAS EN EL MAPA ---
-            for i, ruta in enumerate(rutas_calculadas):
-                c = colores[i % len(colores)]
+        # --------------------------------------------------
+        # MARCADORES DE POZOS / CLUSTERS
+        # --------------------------------------------------
 
-                folium.PolyLine(
-                    ruta["geom"],
-                    color=c,
-                    weight=5,
-                    opacity=0.8
-                ).add_to(m)
+        for p in puntos_validos:
 
-            # --- MARCADORES DE POZOS / CLUSTERS ---
-            for p in puntos_validos:
-                c = colores[(p["id"] - 1) % len(colores)]
+            c = colores[(p["id"] - 1) % len(colores)]
 
-                label_html = dedent(f"""
-                <div style="text-align: center;">
-                    <div style="
-                        background:{c};
-                        color:black;
-                        border-radius:50%;
-                        width:22px;
-                        height:22px;
-                        line-height:22px;
-                        font-weight:bold;
-                        border:2px solid white;
-                        font-size:9pt;">
-                        {p["id"]}
-                    </div>
-
-                    <div style="
-                        background:rgba(14, 17, 23, 0.9);
-                        color:white;
-                        padding:3px 8px;
-                        border-radius:5px;
-                        font-size:9pt;
-                        margin-top:4px;
-                        border:1px solid {c};
-                        white-space:nowrap;">
-                        <i class="fa-solid fa-oil-well" style="color:{c};"></i>
-                        {p["n"]}
-                    </div>
+            label_html = f"""
+            <div style="text-align:center;">
+                <div style="
+                    background:{c};
+                    color:black;
+                    border-radius:50%;
+                    width:24px;
+                    height:24px;
+                    line-height:24px;
+                    font-weight:bold;
+                    border:2px solid white;
+                    font-size:9pt;">
+                    {p["id"]}
                 </div>
-                """)
 
-                folium.Marker(
-                    [p["lat"], p["lon"]],
-                    icon=DivIcon(
-                        html=label_html,
-                        icon_anchor=(11, 11)
-                    )
-                ).add_to(m)
+                <div style="
+                    background:rgba(14,17,23,0.90);
+                    color:white;
+                    padding:3px 8px;
+                    border-radius:5px;
+                    font-size:9pt;
+                    margin-top:4px;
+                    border:1px solid {c};
+                    white-space:nowrap;">
+                    {p["n"]}
+                </div>
+            </div>
+            """
 
-            # --- COMUNIDADES VISIBLES ---
-            for com, coord in COMUNIDADES.items():
-                folium.Marker(
-                    [coord["lat"], coord["lon"]],
-                    icon=folium.Icon(
-                        color="orange",
-                        icon="house-user",
-                        prefix="fa"
-                    ),
-                    tooltip=f"Comunidad: {com}"
-                ).add_to(m)
+            folium.Marker(
+                [p["lat"], p["lon"]],
+                icon=DivIcon(
+                    html=label_html,
+                    icon_anchor=(12, 12)
+                ),
+                tooltip=p["n"]
+            ).add_to(m)
 
-                folium.Circle(
-                    [coord["lat"], coord["lon"]],
-                    radius=5000,
+        # --------------------------------------------------
+        # COMUNIDADES
+        # --------------------------------------------------
+
+        for com, coord in COMUNIDADES.items():
+
+            folium.Marker(
+                [coord["lat"], coord["lon"]],
+                icon=folium.Icon(
                     color="orange",
-                    weight=1,
-                    fill=True,
-                    opacity=0.1
-                ).add_to(m)
+                    icon="home",
+                    prefix="fa"
+                ),
+                tooltip=f"Comunidad: {com}"
+            ).add_to(m)
 
-            # --- AJUSTE DE ZOOM AUTOMÁTICO ---
-            if all_coords:
-                sw = [
-                    min(p[0] for p in all_coords),
-                    min(p[1] for p in all_coords)
-                ]
+            folium.Circle(
+                [coord["lat"], coord["lon"]],
+                radius=5000,
+                color="orange",
+                weight=1,
+                fill=True,
+                fill_opacity=0.10,
+                opacity=0.40,
+                tooltip=f"Radio de alerta 5 km - {com}"
+            ).add_to(m)
 
-                ne = [
-                    max(p[0] for p in all_coords),
-                    max(p[1] for p in all_coords)
-                ]
+        # --------------------------------------------------
+        # AJUSTE DE ZOOM
+        # --------------------------------------------------
 
-                m.fit_bounds([sw, ne])
+        if all_coords:
 
-            st_folium(
-                m,
-                width="100%",
-                height=700
-            )
+            sw = [
+                min(p[0] for p in all_coords),
+                min(p[1] for p in all_coords)
+            ]
 
-        else:
-            st.info("Ingrese una ruta válida para visualizar el mapa.")
+            ne = [
+                max(p[0] for p in all_coords),
+                max(p[1] for p in all_coords)
+            ]
+
+            m.fit_bounds([sw, ne])
+
+        st_folium(
+            m,
+            width="100%",
+            height=700
+        )
+
+    else:
+        st.info("Ingrese una ruta válida para visualizar el mapa.")
