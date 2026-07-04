@@ -75,28 +75,28 @@ PUNTOS_CRITICOS_VALIDACION = {
         "lon": -71.658505,
         "tipo": "COMUNIDAD",
         "alerta": "RESTRICCION NOCTURNA FIJA",
-        "radio_km": 3.0
+        "radio_km": 1.0
     },
     "SANTA HELENA": {
         "lat": 3.899376,
         "lon": -71.490427,
         "tipo": "COMUNIDAD",
         "alerta": "RESTRICCION NOCTURNA PROBABLE",
-        "radio_km": 3.0
+        "radio_km": 1.0
     },
     "BUENOS AIRES - RUBIALITO": {
         "lat": 3.793411,
         "lon": -71.384503,
         "tipo": "COMUNIDAD",
         "alerta": "RESTRICCION NOCTURNA PROBABLE",
-        "radio_km": 3.0
+        "radio_km": 1.0
     },
     "EL PORVENIR": {
         "lat": 3.765052,
         "lon": -71.363584,
         "tipo": "COMUNIDAD",
         "alerta": "RESTRICCION NOCTURNA PROBABLE",
-        "radio_km": 3.0
+        "radio_km": 1.0
     },
 
     # ==================================================
@@ -132,21 +132,21 @@ PUNTOS_CRITICOS_VALIDACION = {
         "lon": -71.421637,
         "tipo": "FINCA",
         "alerta": "RELACIONAMIENTO ENTORNO / TIERRAS",
-        "radio_km": 2.0
+        "radio_km": 1.0
     },
     "LINCON": {
         "lat": 3.723330,
         "lon": -71.530597,
         "tipo": "FINCA",
         "alerta": "RELACIONAMIENTO ENTORNO / TIERRAS",
-        "radio_km": 2.0
+        "radio_km": 1.0
     },
     "TIYABA": {
         "lat": 3.809906,
         "lon": -71.595794,
         "tipo": "FINCA",
         "alerta": "RELACIONAMIENTO ENTORNO / TIERRAS",
-        "radio_km": 2.0
+        "radio_km": 1.0
     }
 }
 
