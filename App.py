@@ -151,6 +151,21 @@ PUNTOS_CRITICOS_VALIDACION = {
     }
 }
 
+# ======================================================
+# AEROPUERTO MORELIA
+# ======================================================
+# Se maneja por separado porque tiene dos radios:
+# 2 km = alerta critica
+# 5 km = alerta preventiva
+
+AEROPUERTO_MORELIA = {
+    "nombre": "AEROPUERTO MORELIA",
+    "lat": 3.750656,
+    "lon": -71.455936,
+    "radio_critico_km": 2.0,
+    "radio_preventivo_km": 5.0
+}
+
 
 # ======================================================
 # FUNCIONES TECNICAS
