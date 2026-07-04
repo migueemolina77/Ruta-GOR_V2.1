@@ -70,7 +70,7 @@ PUNTOS_CRITICOS_VALIDACION = {
     # ==================================================
     # COMUNIDADES
     # ==================================================
-    "AEROPUERTO _MORELIA = {
+    "AEROPUERTO _MORELIA": {
         "lat": 3.750656,
         "lon": -71.455936,
         "radio_critico_km": 2.0,
