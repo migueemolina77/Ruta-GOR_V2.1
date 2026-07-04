@@ -166,6 +166,51 @@ AEROPUERTO_MORELIA = {
     "radio_preventivo_km": 5.0
 }
 
+def evaluar_alertas_aeropuerto(geom):
+    """
+    Evalua si la ruta pasa dentro de los radios del Aeropuerto Morelia.
+    Radio 2 km = alerta critica.
+    Radio 5 km = alerta preventiva.
+    """
+
+    alertas_aeropuerto = []
+
+    distancia_min = distancia_minima_a_ruta_km(
+        AEROPUERTO_MORELIA["lat"],
+        AEROPUERTO_MORELIA["lon"],
+        geom
+    )
+
+    if distancia_min is None:
+        return alertas_aeropuerto
+
+    if distancia_min <= AEROPUERTO_MORELIA["radio_critico_km"]:
+        alertas_aeropuerto.append({
+            "tipo": "AEROPUERTO_CRITICO",
+            "nombre": AEROPUERTO_MORELIA["nombre"],
+            "mensaje": (
+                f"✈️ ALERTA CRITICA AEROPUERTO MORELIA: "
+                f"ruta dentro del radio de 2 km "
+                f"({distancia_min:.2f} km)"
+            ),
+            "distancia_km": distancia_min,
+            "radio_km": AEROPUERTO_MORELIA["radio_critico_km"]
+        })
+
+    elif distancia_min <= AEROPUERTO_MORELIA["radio_preventivo_km"]:
+        alertas_aeropuerto.append({
+            "tipo": "AEROPUERTO_PREVENTIVO",
+            "nombre": AEROPUERTO_MORELIA["nombre"],
+            "mensaje": (
+                f"✈️ PRECAUCION AEROPUERTO MORELIA: "
+                f"ruta dentro del radio de 5 km "
+                f"({distancia_min:.2f} km)"
+            ),
+            "distancia_km": distancia_min,
+            "radio_km": AEROPUERTO_MORELIA["radio_preventivo_km"]
+        })
+
+    return alertas_aeropuerto
 
 # ======================================================
 # FUNCIONES TECNICAS
