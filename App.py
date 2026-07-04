@@ -100,7 +100,7 @@ PUNTOS_CRITICOS_VALIDACION = {
     },
 
     # ==================================================
-    # PUENTES / CANOS - PUNTOS DE DESPINE
+    # PUENTES / CAÑOS - PUNTOS DE DESPINE
     # ==================================================
     "PUENTE CPF 1": {
         "lat": 3.813599,
@@ -109,14 +109,14 @@ PUNTOS_CRITICOS_VALIDACION = {
         "alerta": "DESPINADO",
         "radio_km": 1.0
     },
-    "PUENTE CANO MASIFERIANO": {
+    "PUENTE CAÑO MASIFERIANO": {
         "lat": 3.799900,
         "lon": -71.472938,
         "tipo": "PUENTE",
         "alerta": "DESPINADO",
         "radio_km": 1.0
     },
-    "CANO FELICIANO": {
+    "CAÑO FELICIANO": {
         "lat": 3.852608,
         "lon": -71.420776,
         "tipo": "PUENTE",
@@ -249,7 +249,7 @@ def evaluar_alertas_puntos_criticos(geom):
     """
     Evalua si la ruta pasa dentro del radio de algun punto critico:
     - Comunidad
-    - Puente / Cano
+    - Puente / Caño
     - Finca
     """
 
