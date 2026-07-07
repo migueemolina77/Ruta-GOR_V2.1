@@ -2,5 +2,6 @@ streamlit
 pandas
 folium
 streamlit-folium
+requests
 openpyxl
-geopy
+ortools
